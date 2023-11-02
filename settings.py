@@ -1,13 +1,21 @@
+import pygame
 import numpy as np
+
+E_EXPLOSION = pygame.USEREVENT + 1
 
 K_SPACE = 0
 K_WALL = 1
-K_BOMB = 2
 K_BOX = 4
 K_RANDOM = 5
 
+
+K_BOMB_START = 20
+K_BOMB_END = 23
+K_BOMB = range(K_BOMB_START, K_BOMB_END + 1)
+
+
 K_EXPLOSION_START = 10
-K_EXPLOSION_END = 23
+K_EXPLOSION_END = 18
 K_EXPLOSION = range(K_EXPLOSION_START, K_EXPLOSION_END + 1)
 
 MATRIX = np.array([
@@ -34,7 +42,7 @@ BOMB_EXPLOSION_RANGE = 2
 MAX_PLAYER = 4
 DEFAULT_COORD = [
     (1, 1),
-    (16, 16),
-    (16, 1),
-    (1, 16),
+    (GAME_COLS - 2, GAME_ROWS - 2),
+    (GAME_COLS - 2, 1),
+    (1, GAME_ROWS - 2),
 ]

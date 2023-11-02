@@ -6,7 +6,7 @@ from bomb import Bomb
 
 @cache
 def get_sprites():
-    from sprites import SpriteFrame
+    from assets import SpriteFrame
 
     print("[ DEBUG ] Lazy loaded sprites")
     player_surface = pygame.image.load(
@@ -34,7 +34,7 @@ def can_move(x, y, ghost_mode):
         return 0 < x < GAME_COLS - 1 and 0 < y < GAME_ROWS - 1
 
     val = MATRIX[y][x]
-    if val in [K_WALL, K_BOX, K_BOMB]:
+    if val in [K_WALL, K_BOX] or val in K_BOMB:
         return False
     return True
 

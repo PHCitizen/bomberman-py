@@ -1,3 +1,4 @@
+import pygame
 from settings import *
 
 
@@ -8,11 +9,18 @@ class Bomb:
         self.tile_y = tile_y
         self.range = BOMB_EXPLOSION_RANGE
 
-        self.wait_before_expl = 2400
-        self.expl_duration = 1500
+        self.frame = 0
+        self.speed = 500
+        self.move_frame()
 
-        MATRIX[tile_y][tile_x] = K_BOMB
-        self.task.add(self.wait_before_expl, self.explode)
+    def move_frame(self):
+        MATRIX[self.tile_y][self.tile_x] = K_BOMB_START + self.frame
+
+        if self.frame <= K_BOMB_END - K_BOMB_START:
+            self.task.add(self.speed, self.move_frame)
+            self.frame += 1
+        else:
+            self.explode()
 
     def calc_vertical_expl(self):
         player_x, player_y = self.tile_x, self.tile_y
@@ -20,7 +28,7 @@ class Bomb:
         tiles = []
         for i in range(1, self.range + 1):
             val = MATRIX[player_y - i][player_x]
-            if val in [K_WALL, K_BOMB] or val in K_EXPLOSION:
+            if val == K_WALL or val in K_BOMB or val in K_EXPLOSION:
                 break
 
             tiles.append((player_x, player_y - i))
@@ -30,7 +38,7 @@ class Bomb:
 
         for i in range(1, self.range + 1):
             val = MATRIX[player_y + i][player_x]
-            if val in [K_WALL, K_BOMB] or val in K_EXPLOSION:
+            if val == K_WALL or val in K_BOMB or val in K_EXPLOSION:
                 break
 
             tiles.append((player_x, player_y + i))
@@ -46,7 +54,7 @@ class Bomb:
         tiles = []
         for i in range(1, self.range + 1):
             val = MATRIX[player_y][player_x - i]
-            if val in [K_WALL, K_BOMB] or val in K_EXPLOSION:
+            if val == K_WALL or val in K_BOMB or val in K_EXPLOSION:
                 break
 
             tiles.append((player_x - i, player_y))
@@ -56,7 +64,7 @@ class Bomb:
 
         for i in range(1, self.range + 1):
             val = MATRIX[player_y][player_x + i]
-            if val in [K_WALL, K_BOMB] or val in K_EXPLOSION:
+            if val == K_WALL or val in K_BOMB or val in K_EXPLOSION:
                 break
 
             tiles.append((player_x + i, player_y))
@@ -67,9 +75,9 @@ class Bomb:
         return tiles
 
     def explode(self):
+        pygame.event.post(pygame.Event(E_EXPLOSION))
         tile_x, tile_y = self.tile_x, self.tile_y
 
-        MATRIX[tile_y][tile_x] = K_EXPLOSION_START
         tile1 = self.calc_vertical_expl()
         tile2 = self.calc_horizontal_expl()
         tiles = tile1 + tile2

@@ -7,7 +7,7 @@ import pickle
 
 from player import Player
 from settings import *
-from sprites import *
+from assets import *
 from task import Task
 from button import Button
 
@@ -78,6 +78,18 @@ def host_thread(host, port, task_manager, players):
         print(f"Player {i} connected")
 
 
+def broadcast(players, data):
+    for player_socket, _, _ in players:
+        # if player are disconnected, skip it
+        if player_socket is None:
+            continue
+
+        try:
+            player_socket.sendall(data)
+        except Exception:
+            continue
+
+
 def event_loop(task_manager, players):
     """
     Pygame window
@@ -93,7 +105,7 @@ def event_loop(task_manager, players):
                        " Start ", font(30), "#d7fcd4", "White")
 
     # States:
-    start = False
+    start = True
 
     while True:
         window.blit(get_background(), (0, 0))
@@ -107,6 +119,8 @@ def event_loop(task_manager, players):
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if start_btn.checkForInput(mouse_position):
                     start = True
+            if event.type == E_EXPLOSION:
+                broadcast(players, b"explosion$|$\n")
 
         # check if player steps on tile with explotion
         for y, x in np.argwhere((MATRIX >= K_EXPLOSION_START) & (MATRIX < K_EXPLOSION_END)):
@@ -115,7 +129,6 @@ def event_loop(task_manager, players):
                 if px == x and py == y:
                     player.kill()
 
-        # send current matrix and player data for each player
         for i, (player_socket, _, player) in enumerate(players):
             is_connected = "Disconnected" if player_socket is None else "Connected"
             window.blit(
@@ -123,22 +136,13 @@ def event_loop(task_manager, players):
                 (0, 100 + (20 * i))
             )
 
-            # if player are disconnected, skip it
-            # if game not started, dont send data to players
-            if player_socket is None or not start:
-                continue
-
-            try:
-                pdata = pickle.dumps(
-                    list(map(lambda p: p[2], players))) + b"$|$"
-                matrix = MATRIX.tobytes() + b"$|$"
-                compressed_data = zlib.compress(pdata + matrix) + b"$|$\n"
-                player_socket.sendall(compressed_data)
-            except Exception:
-                continue
-
-        # game status
         if start:
+            # send current matrix and player data for each player
+            pdata = pickle.dumps(list(map(lambda p: p[2], players))) + b"$|$"
+            matrix = MATRIX.tobytes() + b"$|$"
+            broadcast(players, zlib.compress(pdata + matrix) + b"$|$\n")
+
+            # game status
             window.blit(
                 text(20, 'Game started', True, "#d7fcd4"),
                 (150, 50),

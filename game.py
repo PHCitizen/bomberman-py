@@ -1,6 +1,6 @@
 import settings
 from settings import *
-from sprites import *
+from assets import *
 
 
 class Game:
@@ -31,15 +31,16 @@ class Game:
                 self.surface.blit(grass, position)
                 self.surface.blit(explosion_frame(
                     matrix_value - K_EXPLOSION_START), position)
+            elif matrix_value in settings.K_BOMB:
+                self.surface.blit(grass, position)
+                self.surface.blit(bomb_frame(
+                    matrix_value - K_BOMB_START), position)
 
             match matrix_value:
                 case settings.K_WALL:
                     self.surface.blit(wall_sprites(), position)
                 case settings.K_SPACE:
                     self.surface.blit(grass, position)
-                case settings.K_BOMB:
-                    self.surface.blit(grass, position)
-                    self.surface.blit(bomb_sprites(), position)
                 case settings.K_BOX:
                     self.surface.blit(box_sprites(), position)
                 case _:

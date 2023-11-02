@@ -7,7 +7,7 @@ import zlib
 from player import Player
 from settings import *
 from game import Game
-from sprites import *
+from assets import *
 
 
 pygame.init()
@@ -31,22 +31,26 @@ def socket_thread():
 
     buffer = b""
     while True:
-        try:
-            new_data = client_file.readline()
-            if not new_data.endswith(b"$|$\n"):
-                buffer += new_data
-                continue
-
-            data = zlib.decompress(buffer + new_data.removesuffix(b"$|$\n"))
-            data = data.split(b"$|$")
-
-            players = pickle.loads(data[0])
-            matrix = np.frombuffer(
-                data[1], dtype=np.uint8).reshape(MATRIX.shape)
-            buffer = b""
-        except zlib.error as e:
-            print(buffer, e)
+        new_data = client_file.readline()
+        if not new_data.endswith(b"$|$\n"):
+            buffer += new_data
             continue
+
+        if new_data == b"explosion$|$\n":
+            explosion_sound().play(0)
+        else:
+            try:
+                data = zlib.decompress(
+                    buffer + new_data.removesuffix(b"$|$\n"))
+                data = data.split(b"$|$")
+
+                players = pickle.loads(data[0])
+                matrix = np.frombuffer(
+                    data[1], dtype=np.uint8).reshape(MATRIX.shape)
+            except zlib.error as e:
+                print(buffer, e)
+
+        buffer = b""
 
 
 threading.Thread(target=socket_thread, daemon=True).start()
@@ -72,6 +76,8 @@ while True:
     clock.tick(FPS)
 
 
+bgmusic().play(-1)
+
 game_obj = Game(client_socket, client_file)
 stats_window = pygame.Surface((GAME_WIDTH, CELL_SIZE))
 WINDOW = pygame.display.set_mode((GAME_WIDTH, GAME_HEIGHT + CELL_SIZE))
@@ -87,7 +93,7 @@ while True:
 
     stats_window.fill("#ffffff")
     for i in range(players[player_index].bombs):
-        stats_window.blit(bomb_sprites(), (i * CELL_SIZE, 0))
+        stats_window.blit(bomb_frame(0), (i * CELL_SIZE, 0))
 
     for i in range(players[player_index].lives):
         stats_window.blit(
