@@ -1,0 +1,173 @@
+import socket
+import threading
+import pygame
+import zlib
+import random
+import pickle
+
+from player import Player
+from settings import *
+from sprites import *
+from task import Task
+from button import Button
+
+
+def message_handler(players, index: int, conn: socket.socket, file: socket.SocketIO):
+    """
+    Handle player msg.
+    if message match certain action, do it
+    """
+    current_player = players[index][2]
+
+    while True:
+        try:
+            data = file.readline()
+            if not data:
+                break
+
+            if data == b"move_left\n":
+                current_player.move_left()
+            elif data == b"move_right\n":
+                current_player.move_right()
+            elif data == b"move_up\n":
+                current_player.move_up()
+            elif data == b"move_down\n":
+                current_player.move_down()
+            elif data == b"bomber_man\n":
+                current_player.bomber_man()
+            else:
+                print(data)
+        except Exception:
+            break
+
+    # Player disconnect. do cleanup
+    print(f"player {index} disconnect")
+    players[index] = (None, None, current_player)
+    conn.close()
+
+
+def host_thread(host, port, task_manager, players):
+    """
+    This host thread
+    used to accept new connection and create new player
+    """
+
+    # listen to port using TCP socket
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.bind((host, port))
+    server_socket.listen(MAX_PLAYER)
+    print("server started")
+
+    # accept only 'MAX_PLAYER' amount of connection
+    for i in range(MAX_PLAYER):
+        # player connection obj
+        player_socket, _ = server_socket.accept()
+        file = socket.SocketIO(player_socket, "rwb")
+        new_player = Player(task_manager, DEFAULT_COORD[i])
+
+        # send to player the player_id
+        player_socket.sendall(i.to_bytes(16, "big") + b"\n")
+        players.append((player_socket, file, new_player))
+
+        # process player message individually, (non-blocking)
+        threading.Thread(
+            target=message_handler,
+            args=(players, i, player_socket, file),
+            daemon=True).start()
+
+        print(f"Player {i} connected")
+
+
+def event_loop(task_manager, players):
+    """
+    Pygame window
+    """
+
+    pygame.init()
+    window = pygame.display.set_mode((500, 200))
+    pygame.display.set_caption("BomberPy - Host")
+    clock = pygame.time.Clock()
+
+    # Singleton
+    start_btn = Button(None, (250, 50),
+                       " Start ", font(30), "#d7fcd4", "White")
+
+    # States:
+    start = False
+
+    while True:
+        window.blit(get_background(), (0, 0))
+        mouse_position = pygame.mouse.get_pos()
+
+        # process events
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if start_btn.checkForInput(mouse_position):
+                    start = True
+
+        # check if player steps on tile with explotion
+        for y, x in np.argwhere((MATRIX >= K_EXPLOSION_START) & (MATRIX < K_EXPLOSION_END)):
+            for _, _, player in players:
+                px, py = player.calc_player_tile()
+                if px == x and py == y:
+                    player.kill()
+
+        # send current matrix and player data for each player
+        for i, (player_socket, _, player) in enumerate(players):
+            is_connected = "Disconnected" if player_socket is None else "Connected"
+            window.blit(
+                text(20, f'Player {i} - {is_connected}', True, "#d7fcd4"),
+                (0, 100 + (20 * i))
+            )
+
+            # if player are disconnected, skip it
+            # if game not started, dont send data to players
+            if player_socket is None or not start:
+                continue
+
+            try:
+                pdata = pickle.dumps(
+                    list(map(lambda p: p[2], players))) + b"$|$"
+                matrix = MATRIX.tobytes() + b"$|$"
+                compressed_data = zlib.compress(pdata + matrix) + b"$|$\n"
+                player_socket.sendall(compressed_data)
+            except Exception:
+                continue
+
+        # game status
+        if start:
+            window.blit(
+                text(20, 'Game started', True, "#d7fcd4"),
+                (150, 50),
+            )
+        else:
+            start_btn.update(window, mouse_position)
+
+        # update
+        task_manager.tick()
+        pygame.display.update()
+        clock.tick(FPS)
+
+
+def main():
+    host, port = '0.0.0.0', 8888
+
+    # randomize field
+    for y, x in np.argwhere(MATRIX == K_RANDOM):
+        MATRIX[y][x] = random.choice([K_SPACE, K_BOX])
+
+    # shared state
+    task_manager = Task()
+    players: list[tuple[socket.socket, socket.SocketIO, Player]] = []
+
+    # pass shared state different process
+    threading.Thread(target=host_thread, args=(
+        host, port, task_manager, players), daemon=True).start()
+    event_loop(task_manager, players)
+
+
+if __name__ == "__main__":
+    main()
