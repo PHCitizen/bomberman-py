@@ -23,7 +23,7 @@ def get_sprites():
     tomb_surface = pygame.image.load("./graphics/tomb.png").convert_alpha()
 
     shadow_surface = pygame.Surface(CELL_RECT)
-    shadow_surface.fill("#5c5d5e")
+    shadow_surface.fill("#a0a2a3")
 
     return player_surface, ghosts_sprite, tomb_surface, shadow_surface
 
@@ -40,7 +40,8 @@ def can_move(x, y, ghost_mode):
 
 
 class Player:
-    def __init__(self, task,  pos):
+    def __init__(self, task,  pos, name):
+        self.name = name
         self.rect = pygame.Rect((0, 0), (CELL_SIZE, CELL_SIZE))
         self.rect.x = pos[0] * CELL_SIZE
         self.rect.y = pos[1] * CELL_SIZE
@@ -58,10 +59,10 @@ class Player:
         self.frame = 0
 
     def __getstate__(self):
-        return self.rect, self.bombs, self.lives, self.ghost_mode
+        return self.rect, self.bombs, self.lives, self.ghost_mode, self.name
 
     def __setstate__(self, state):
-        self.rect, self.bombs, self.lives, self.ghost_mode = state
+        self.rect, self.bombs, self.lives, self.ghost_mode, self.name = state
 
     def move_up(self):
         if self.lives == 0:

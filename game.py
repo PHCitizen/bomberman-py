@@ -1,6 +1,7 @@
 import settings
 from settings import *
 from assets import *
+from player import Player
 
 
 class Game:
@@ -10,7 +11,7 @@ class Game:
         self.surface = pygame.Surface((GAME_WIDTH, GAME_HEIGHT))
         self.grasses = Grass()
 
-    def update(self, players, matrix):
+    def update(self, players: list[Player], matrix):
         keys = pygame.key.get_pressed()
         if keys[pygame.K_LEFT]:
             self.file.write(b"move_left\n")
@@ -29,22 +30,20 @@ class Game:
 
             if matrix_value in settings.K_EXPLOSION:
                 self.surface.blit(grass, position)
-                self.surface.blit(explosion_frame(
-                    matrix_value - K_EXPLOSION_START), position)
+                self.surface.blit(explosion_frame(matrix_value - K_EXPLOSION_START), position)
             elif matrix_value in settings.K_BOMB:
                 self.surface.blit(grass, position)
-                self.surface.blit(bomb_frame(
-                    matrix_value - K_BOMB_START), position)
-
-            match matrix_value:
-                case settings.K_WALL:
+                self.surface.blit(bomb_frame(matrix_value - K_BOMB_START), position)
+            elif matrix_value == settings.K_WALL:
                     self.surface.blit(wall_sprites(), position)
-                case settings.K_SPACE:
-                    self.surface.blit(grass, position)
-                case settings.K_BOX:
-                    self.surface.blit(box_sprites(), position)
-                case _:
-                    pass
+            elif matrix_value == settings.K_SPACE:
+                self.surface.blit(grass, position)
+            elif matrix_value == settings.K_BOX:
+                self.surface.blit(box_sprites(), position)
 
         for player in players:
             player.update(self.surface)
+
+            msg = text(8, player.name, True, "#000000")
+            self.surface.blit(msg, (player.rect.centerx - msg.get_width() // 2,
+                                    player.rect.top - 10))

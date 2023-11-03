@@ -35,6 +35,8 @@ def message_handler(players, index: int, conn: socket.socket, file: socket.Socke
                 current_player.move_down()
             elif data == b"bomber_man\n":
                 current_player.bomber_man()
+            elif data.startswith(b"name:"):
+                current_player.name = data.rstrip().split(b":")[1]
             else:
                 print(data)
         except Exception:
@@ -63,7 +65,7 @@ def host_thread(host, port, task_manager, players):
         # player connection obj
         player_socket, _ = server_socket.accept()
         file = socket.SocketIO(player_socket, "rwb")
-        new_player = Player(task_manager, DEFAULT_COORD[i])
+        new_player = Player(task_manager, DEFAULT_COORD[i], f"Player {i}")
 
         # send to player the player_id
         player_socket.sendall(i.to_bytes(16, "big") + b"\n")
@@ -105,7 +107,7 @@ def event_loop(task_manager, players):
                        " Start ", font(30), "#d7fcd4", "White")
 
     # States:
-    start = True
+    start = False
 
     while True:
         window.blit(get_background(), (0, 0))
@@ -147,7 +149,7 @@ def event_loop(task_manager, players):
             # game status
             window.blit(
                 text(20, 'Game started', True, "#d7fcd4"),
-                (150, 50),
+                (125, 30),
             )
         else:
             start_btn.update(window, mouse_position)

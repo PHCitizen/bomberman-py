@@ -4,6 +4,9 @@ import numpy as np
 E_EXPLOSION = pygame.USEREVENT + 1
 E_GHOST = pygame.USEREVENT + 2
 
+C_ACTIVE = "#00ff00"
+C_INACTIVE = "#999594"
+
 K_SPACE = 0
 K_WALL = 1
 K_BOX = 4

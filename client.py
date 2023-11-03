@@ -8,7 +8,7 @@ from player import Player
 from settings import *
 from game import Game
 from assets import *
-
+from button import *
 
 pygame.init()
 WINDOW = pygame.display.set_mode((500, 200))
@@ -58,7 +58,14 @@ def socket_thread():
 threading.Thread(target=socket_thread, daemon=True).start()
 
 
-waiting_text = text(30, 'Waiting for host \nto start...', True, "#d7fcd4")
+waiting_text = text(15, 'Waiting for host to start...', True, "#d7fcd4")
+pname_text = text(15, 'Enter name:', True, "#d7fcd4")
+player_name = InputBox(185, 45, 200, 25, 15, f"Player {player_index}")
+
+
+def sumbit_name(name):
+    client_file.write(f"name:{name}\n".encode())
+
 
 while True:
     WINDOW.blit(get_background(), (0, 0))
@@ -71,8 +78,11 @@ while True:
         if event.type == pygame.QUIT:
             pygame.quit()
             exit()
+        player_name.handle_event(event, sumbit_name)
 
-    WINDOW.blit(waiting_text, (10, 50))
+    WINDOW.blit(pname_text, (20, 50))
+    WINDOW.blit(waiting_text, (50, 10))
+    player_name.draw(WINDOW)
 
     pygame.display.update()
     clock.tick(FPS)
