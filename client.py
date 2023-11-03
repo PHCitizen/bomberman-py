@@ -38,6 +38,8 @@ def socket_thread():
 
         if new_data == b"explosion$|$\n":
             explosion_sound().play(0)
+        elif new_data == b"ghost$|$\n":
+            ghost_sound().play(0)
         else:
             try:
                 data = zlib.decompress(

@@ -2,6 +2,7 @@ import pygame
 import numpy as np
 
 E_EXPLOSION = pygame.USEREVENT + 1
+E_GHOST = pygame.USEREVENT + 2
 
 K_SPACE = 0
 K_WALL = 1
@@ -10,7 +11,7 @@ K_RANDOM = 5
 
 
 K_BOMB_START = 20
-K_BOMB_END = 23
+K_BOMB_END = 29
 K_BOMB = range(K_BOMB_START, K_BOMB_END + 1)
 
 

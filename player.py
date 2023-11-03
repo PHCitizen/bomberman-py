@@ -121,6 +121,8 @@ class Player:
         if self.ghost_mode or self.lives == 0:
             return
 
+        pygame.event.post(pygame.Event(E_GHOST))
+
         self.lives -= 1
         self.ghost_mode = True
 

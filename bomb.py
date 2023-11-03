@@ -10,7 +10,7 @@ class Bomb:
         self.range = BOMB_EXPLOSION_RANGE
 
         self.frame = 0
-        self.speed = 500
+        self.speed = 250
         self.move_frame()
 
     def move_frame(self):

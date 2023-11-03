@@ -116,11 +116,13 @@ def event_loop(task_manager, players):
             if event.type == pygame.QUIT:
                 pygame.quit()
                 exit()
-            if event.type == pygame.MOUSEBUTTONDOWN:
+            elif event.type == pygame.MOUSEBUTTONDOWN:
                 if start_btn.checkForInput(mouse_position):
                     start = True
-            if event.type == E_EXPLOSION:
+            elif event.type == E_EXPLOSION:
                 broadcast(players, b"explosion$|$\n")
+            elif event.type == E_GHOST:
+                broadcast(players, b"ghost$|$\n")
 
         # check if player steps on tile with explotion
         for y, x in np.argwhere((MATRIX >= K_EXPLOSION_START) & (MATRIX < K_EXPLOSION_END)):
