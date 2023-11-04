@@ -4,10 +4,15 @@ from settings import CELL_RECT
 from functools import cache
 
 
-def get_image(sprite, frame, width, height):
+def get_image(sprite: pygame.Surface, frame, width, height):
     surface = pygame.Surface(
         (width, height), pygame.SRCALPHA, 32).convert_alpha()
-    surface.blit(sprite, (0, 0), ((frame * width), 0, width, height))
+
+    x_max = sprite.get_width() / width
+    y_frame, x_frame = divmod(frame, x_max)
+
+    surface.blit(sprite, (0, 0), (x_frame * width, y_frame * height,
+                                  width, height))
     return pygame.transform.scale(surface, CELL_RECT)
 
 

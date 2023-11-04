@@ -36,7 +36,7 @@ def message_handler(players, index: int, conn: socket.socket, file: socket.Socke
             elif data == b"bomber_man\n":
                 current_player.bomber_man()
             elif data.startswith(b"name:"):
-                current_player.name = data.rstrip().split(b":")[1]
+                current_player.name = data.rstrip().split(b":")[1].decode()
             else:
                 print(data)
         except Exception:
@@ -65,7 +65,7 @@ def host_thread(host, port, task_manager, players):
         # player connection obj
         player_socket, _ = server_socket.accept()
         file = socket.SocketIO(player_socket, "rwb")
-        new_player = Player(task_manager, DEFAULT_COORD[i], f"Player {i}")
+        new_player = Player(task_manager, DEFAULT_COORD[i], f"Player {i}", 2)
 
         # send to player the player_id
         player_socket.sendall(i.to_bytes(16, "big") + b"\n")
@@ -136,7 +136,7 @@ def event_loop(task_manager, players):
         for i, (player_socket, _, player) in enumerate(players):
             is_connected = "Disconnected" if player_socket is None else "Connected"
             window.blit(
-                text(20, f'Player {i} - {is_connected}', True, "#d7fcd4"),
+                text(20, f'{player.name} - {is_connected}', True, "#d7fcd4"),
                 (0, 100 + (20 * i))
             )
 

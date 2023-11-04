@@ -2,16 +2,13 @@ import pygame
 from settings import *
 from functools import cache
 from bomb import Bomb
+from assets import get_image
 
 
 @cache
 def get_sprites():
     from assets import SpriteFrame
-
     print("[ DEBUG ] Lazy loaded sprites")
-    player_surface = pygame.image.load(
-        "./graphics/characters/1.png").convert_alpha()
-    player_surface = pygame.transform.scale(player_surface, CELL_RECT)
 
     ghosts_sprite = pygame.image.load(
         "./graphics/characters/ghost.png").convert_alpha()
@@ -25,7 +22,13 @@ def get_sprites():
     shadow_surface = pygame.Surface(CELL_RECT)
     shadow_surface.fill("#a0a2a3")
 
-    return player_surface, ghosts_sprite, tomb_surface, shadow_surface
+    return ghosts_sprite, tomb_surface, shadow_surface
+
+
+@cache
+def get_character(character):
+    print(f"[ DEBUG ] Loaded character {character}")
+    return pygame.image.load(f"./graphics/characters/{character}.png")
 
 
 def can_move(x, y, ghost_mode):
@@ -39,8 +42,58 @@ def can_move(x, y, ghost_mode):
     return True
 
 
+class PlayerSprite:
+    def __init__(self, character) -> None:
+        self.character = character
+        self.sprite = get_character(character)
+        self.last_move = "down"
+        self.frame = 0
+        self.last_update = 0
+        self.speed = 100
+
+    def __getstate__(self):
+        return self.character, self.frame
+
+    def __setstate__(self, state):
+        self.character, self.frame = state
+        self.sprite = get_character(self.character)
+
+    def move(self, movement):
+        current_time = pygame.time.get_ticks()
+        if self.last_move == movement:
+            if current_time - self.last_update < self.speed:
+                return
+
+            # math?
+            self.frame += 1
+            if self.frame == 4:
+                self.frame = 0
+            elif self.frame == 8:
+                self.frame = 4
+            elif self.frame == 12:
+                self.frame = 8
+            elif self.frame == 16:
+                self.frame = 12
+        else:
+            if movement == "down":
+                self.frame = 0
+            elif movement == "up":
+                self.frame = 4
+            elif movement == "right":
+                self.frame = 8
+            elif movement == "left":
+                self.frame = 12
+
+            self.last_move = movement
+
+        self.last_update = current_time
+
+    def get(self):
+        return get_image(self.sprite, self.frame, CELL_SIZE, CELL_SIZE)
+
+
 class Player:
-    def __init__(self, task,  pos, name):
+    def __init__(self, task,  pos, name, character):
         self.name = name
         self.rect = pygame.Rect((0, 0), (CELL_SIZE, CELL_SIZE))
         self.rect.x = pos[0] * CELL_SIZE
@@ -57,12 +110,13 @@ class Player:
         self.ghost_mode_duration = 5000
 
         self.frame = 0
+        self.character = PlayerSprite(character)
 
     def __getstate__(self):
-        return self.rect, self.bombs, self.lives, self.ghost_mode, self.name
+        return self.rect, self.bombs, self.lives, self.ghost_mode, self.name, self.character
 
     def __setstate__(self, state):
-        self.rect, self.bombs, self.lives, self.ghost_mode, self.name = state
+        self.rect, self.bombs, self.lives, self.ghost_mode, self.name, self.character = state
 
     def move_up(self):
         if self.lives == 0:
@@ -72,6 +126,7 @@ class Player:
         offset = self.rect.bottom // CELL_SIZE
         if can_move(player_x, player_y - 1, self.ghost_mode) or player_y != offset:
             self.rect.y -= self.movement_speed
+            self.character.move("up")
 
     def move_down(self):
         if self.lives == 0:
@@ -81,6 +136,7 @@ class Player:
         offset = self.rect.top // CELL_SIZE
         if can_move(player_x, player_y + 1, self.ghost_mode) or player_y != offset:
             self.rect.y += self.movement_speed
+            self.character.move("down")
 
     def move_left(self):
         if self.lives == 0:
@@ -90,6 +146,7 @@ class Player:
         offset = self.rect.right // CELL_SIZE
         if can_move(player_x - 1, player_y, self.ghost_mode) or player_x != offset:
             self.rect.x -= self.movement_speed
+            self.character.move("left")
 
     def move_right(self):
         if self.lives == 0:
@@ -99,6 +156,7 @@ class Player:
         offset = self.rect.left // CELL_SIZE
         if can_move(player_x + 1, player_y, self.ghost_mode) or player_x != offset:
             self.rect.x += self.movement_speed
+            self.character.move("right")
 
     def calc_player_tile(self):
         player_x = self.rect.centerx // CELL_SIZE
@@ -137,7 +195,7 @@ class Player:
         self.task.add(self.ghost_mode_duration, back_to_normal_mode)
 
     def update(self, game_surface):
-        player_surface, ghosts_sprite, tomb_surface, shadow_surface = get_sprites()
+        ghosts_sprite, tomb_surface, shadow_surface = get_sprites()
         if self.lives == 0:
             game_surface.blit(tomb_surface, self.rect)
             return
@@ -148,4 +206,4 @@ class Player:
         if self.ghost_mode:
             game_surface.blit(ghosts_sprite.get(), self.rect)
         else:
-            game_surface.blit(player_surface, self.rect)
+            game_surface.blit(self.character.get(), self.rect)

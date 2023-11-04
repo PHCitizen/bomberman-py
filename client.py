@@ -64,6 +64,7 @@ player_name = InputBox(185, 45, 200, 25, 15, f"Player {player_index}")
 
 
 def sumbit_name(name):
+    pygame.display.set_caption(f"BomberPy - {name}")
     client_file.write(f"name:{name}\n".encode())
 
 
