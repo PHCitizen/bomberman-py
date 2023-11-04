@@ -35,22 +35,27 @@ def socket_thread():
         if not new_data.endswith(b"$|$\n"):
             buffer += new_data
             continue
+        buffer += new_data
 
-        if new_data == b"explosion$|$\n":
+        if buffer == b"explosion$|$\n":
             explosion_sound().play(0)
-        elif new_data == b"ghost$|$\n":
+        elif buffer == b"ghost$|$\n":
             ghost_sound().play(0)
-        else:
+        elif buffer.startswith(b"pdata:"):
+            data = buffer.removesuffix(b"$|$\n")
+            data = data.split(b":", 1)[1]
+            players = pickle.loads(data)
+        elif buffer.startswith(b"matrix:"):
+            data = buffer.removesuffix(b"$|$\n")
+            data = data.split(b":", 1)[1]
             try:
-                data = zlib.decompress(
-                    buffer + new_data.removesuffix(b"$|$\n"))
-                data = data.split(b"$|$")
-
-                players = pickle.loads(data[0])
+                data = zlib.decompress(data)
                 matrix = np.frombuffer(
-                    data[1], dtype=np.uint8).reshape(MATRIX.shape)
+                    data, dtype=np.uint8).reshape(MATRIX.shape)
             except zlib.error as e:
                 print(buffer, e)
+        else:
+            print("Unknown message", buffer)
 
         buffer = b""
 

@@ -108,6 +108,8 @@ def event_loop(task_manager, players):
 
     # States:
     start = False
+    last_matrix = b""
+    last_pdata = b""
 
     while True:
         window.blit(get_background(), (0, 0))
@@ -142,9 +144,16 @@ def event_loop(task_manager, players):
 
         if start:
             # send current matrix and player data for each player
-            pdata = pickle.dumps(list(map(lambda p: p[2], players))) + b"$|$"
-            matrix = MATRIX.tobytes() + b"$|$"
-            broadcast(players, zlib.compress(pdata + matrix) + b"$|$\n")
+
+            pdata = pickle.dumps(list(map(lambda p: p[2], players)))
+            if pdata != last_pdata:
+                broadcast(players, b"pdata:" + pdata + b"$|$\n")
+                last_pdata = pdata
+
+            matrix_data = zlib.compress(MATRIX.tobytes())
+            if matrix_data != last_matrix:
+                broadcast(players, b"matrix:" + matrix_data + b"$|$\n")
+                last_matrix = matrix_data
 
             # game status
             window.blit(
