@@ -127,9 +127,10 @@ def game_phase(state: State):
     game_obj = Game(state.socket, state.file)
     stats_window = pygame.Surface((GAME_WIDTH, CELL_SIZE))
     window = pygame.display.set_mode((GAME_WIDTH, GAME_HEIGHT + CELL_SIZE))
-    current_player = state.players[state.player_index]
 
     while True:
+        current_player = state.players[state.player_index]
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()

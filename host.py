@@ -70,7 +70,7 @@ def host_thread(host, port, task_manager, players):
         # player connection obj
         player_socket, _ = server_socket.accept()
         file = socket.SocketIO(player_socket, "rwb")
-        new_player = Player(task_manager, DEFAULT_COORD[i], f"Player {i}", 2)
+        new_player = Player(task_manager, DEFAULT_COORD[i], f"Player {i}", 1)
 
         # send to player the player_id
         player_socket.sendall(i.to_bytes(16, "big") + b"\n")
@@ -97,7 +97,7 @@ def broadcast(players, data):
             continue
 
 
-def event_loop(task_manager, players, appstate):
+def event_loop(task_manager, players: list[tuple[None, None, Player]], appstate):
     """
     Pygame window
     """
@@ -134,11 +134,27 @@ def event_loop(task_manager, players, appstate):
                 broadcast(players, b"ghost$|$\n")
 
         # check if player steps on tile with explotion
-        for y, x in np.argwhere((MATRIX >= K_EXPLOSION_START) & (MATRIX < K_EXPLOSION_END)):
-            for _, _, player in players:
-                px, py = player.calc_player_tile()
+        player_tile = [(player.calc_player_tile(), player)  # pre-calc player tile
+                       for _, _, player in players]
+        for (y, x), matrix_value in np.ndenumerate(MATRIX):
+            for (px, py), player in player_tile:
                 if px == x and py == y:
-                    player.kill()
+                    if matrix_value in K_EXPLOSION:
+                        player.kill()
+
+                    if matrix_value in POWER_UP and not player.ghost_mode:
+                        if matrix_value == K_LIVES:
+                            player.lives += 1
+                        elif matrix_value == K_EXTRA_BOMB:
+                            player.bombs += 1
+                        elif matrix_value == K_INC_BOMB_RANGE:
+                            player.bomb_range += 1
+                        elif matrix_value == K_MOVE_SPEED:
+                            player.movement_speed += 1
+                        elif matrix_value == K_DEATH:
+                            player.lives -= 1
+
+                        MATRIX[y][x] = K_SPACE
 
         # for i, (player_socket, _, player) in enumerate(players):
         #     is_connected = "Disconnected" if player_socket is None else "Connected"

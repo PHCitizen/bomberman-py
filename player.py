@@ -108,6 +108,7 @@ class Player:
         self.lives = 3
         self.ghost_mode = False
         self.ghost_mode_duration = 5000
+        self.bomb_range = 2
 
         self.frame = 0
         self.character = PlayerSprite(character)
@@ -168,7 +169,7 @@ class Player:
         if self.bombs == 0 or self.ghost_mode or self.lives == 0 or MATRIX[player_y][player_x] != K_SPACE:
             return
 
-        Bomb(self.task, player_x, player_y)
+        Bomb(self.task, player_x, player_y, self.bomb_range)
         self.bombs -= 1
 
         def recharge():
@@ -185,12 +186,11 @@ class Player:
         self.lives -= 1
         self.ghost_mode = True
 
-        movement_speed = self.movement_speed
-        self.movement_speed *= 2
+        self.movement_speed += 2
 
         def back_to_normal_mode():
             self.ghost_mode = False
-            self.movement_speed = movement_speed
+            self.movement_speed -= 2
 
         self.task.add(self.ghost_mode_duration, back_to_normal_mode)
 

@@ -1,4 +1,3 @@
-import settings
 from settings import *
 from assets import *
 from player import Player
@@ -28,18 +27,33 @@ class Game:
             position = (x * CELL_SIZE, y * CELL_SIZE)
             grass = self.grasses.get(f"{x}:{y}")
 
-            if matrix_value in settings.K_EXPLOSION:
+            if matrix_value in K_EXPLOSION:
                 self.surface.blit(grass, position)
-                self.surface.blit(explosion_frame(matrix_value - K_EXPLOSION_START), position)
-            elif matrix_value in settings.K_BOMB:
+                self.surface.blit(explosion_frame(
+                    matrix_value - K_EXPLOSION_START), position)
+            elif matrix_value in K_BOMB:
                 self.surface.blit(grass, position)
-                self.surface.blit(bomb_frame(matrix_value - K_BOMB_START), position)
-            elif matrix_value == settings.K_WALL:
-                    self.surface.blit(wall_sprites(), position)
-            elif matrix_value == settings.K_SPACE:
+                self.surface.blit(bomb_frame(
+                    matrix_value - K_BOMB_START), position)
+            elif matrix_value == K_WALL:
+                self.surface.blit(wall_sprites(), position)
+            elif matrix_value == K_SPACE:
                 self.surface.blit(grass, position)
-            elif matrix_value == settings.K_BOX:
+            elif matrix_value == K_BOX:
                 self.surface.blit(box_sprites(), position)
+            elif matrix_value == K_LIVES:
+                self.surface.blit(grass, position)
+                self.surface.blit(heart_sprites(), position)
+            elif matrix_value == K_EXTRA_BOMB:
+                self.surface.blit(grass, position)
+                self.surface.blit(bomb_add_sprite(), position)
+            elif matrix_value == K_INC_BOMB_RANGE:
+                self.surface.blit(grass, position)
+                self.surface.blit(expl_range_add_sprite(), position)
+            elif matrix_value == K_MOVE_SPEED:
+                self.surface.blit(movement_speed_sprite(), position)
+            elif matrix_value == K_DEATH:
+                pass
 
         for player in players:
             player.update(self.surface)

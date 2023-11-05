@@ -35,6 +35,24 @@ def bomb_frame(n):
 
 
 @cache
+def bomb_add_sprite():
+    image = pygame.image.load("./graphics/bomb add.png").convert_alpha()
+    return pygame.transform.scale(image, CELL_RECT)
+
+
+@cache
+def expl_range_add_sprite():
+    image = pygame.image.load("./graphics/explosion add.png").convert_alpha()
+    return pygame.transform.scale(image, CELL_RECT)
+
+
+@cache
+def movement_speed_sprite():
+    image = pygame.image.load("./graphics/movement speed.png").convert_alpha()
+    return pygame.transform.scale(image, CELL_RECT)
+
+
+@cache
 def heart_sprites():
     image = pygame.image.load("./graphics/heart.png").convert_alpha()
     return pygame.transform.scale(image, CELL_RECT)
