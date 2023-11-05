@@ -92,14 +92,14 @@ def broadcast(players, data):
             continue
 
 
-def event_loop(task_manager, players):
+def event_loop(task_manager, players, appstate):
     """
     Pygame window
     """
 
     pygame.init()
-    window = pygame.display.set_mode((500, 200))
-    pygame.display.set_caption("BomberPy - Host")
+    # window = pygame.display.set_mode((500, 200))
+    # pygame.display.set_caption("BomberPy - Host")
     clock = pygame.time.Clock()
 
     # Singleton
@@ -107,12 +107,12 @@ def event_loop(task_manager, players):
                        " Start ", font(30), "#d7fcd4", "White")
 
     # States:
-    start = False
+    # start = False
     last_matrix = b""
     last_pdata = b""
 
     while True:
-        window.blit(get_background(), (0, 0))
+        # window.blit(get_background(), (0, 0))
         mouse_position = pygame.mouse.get_pos()
 
         # process events
@@ -135,14 +135,14 @@ def event_loop(task_manager, players):
                 if px == x and py == y:
                     player.kill()
 
-        for i, (player_socket, _, player) in enumerate(players):
-            is_connected = "Disconnected" if player_socket is None else "Connected"
-            window.blit(
-                text(20, f'{player.name} - {is_connected}', True, "#d7fcd4"),
-                (0, 100 + (20 * i))
-            )
+        # for i, (player_socket, _, player) in enumerate(players):
+        #     is_connected = "Disconnected" if player_socket is None else "Connected"
+        #     window.blit(
+        #         text(20, f'{player.name} - {is_connected}', True, "#d7fcd4"),
+        #         (0, 100 + (20 * i))
+        #     )
 
-        if start:
+        if appstate["start"]:
             # send current matrix and player data for each player
 
             pdata = pickle.dumps(list(map(lambda p: p[2], players)))
@@ -156,16 +156,17 @@ def event_loop(task_manager, players):
                 last_matrix = matrix_data
 
             # game status
-            window.blit(
-                text(20, 'Game started', True, "#d7fcd4"),
-                (125, 30),
-            )
+            # window.blit(
+            #     text(20, 'Game started', True, "#d7fcd4"),
+            #     (125, 30),
+            # )
         else:
-            start_btn.update(window, mouse_position)
+            pass
+            # start_btn.update(window, mouse_position)
 
         # update
         task_manager.tick()
-        pygame.display.update()
+        # pygame.display.update()
         clock.tick(FPS)
 
 
@@ -177,13 +178,19 @@ def main():
         MATRIX[y][x] = random.choice([K_SPACE, K_BOX])
 
     # shared state
+    app_state = {"start": False}
     task_manager = Task()
     players: list[tuple[socket.socket, socket.SocketIO, Player]] = []
 
     # pass shared state different process
     threading.Thread(target=host_thread, args=(
         host, port, task_manager, players), daemon=True).start()
-    event_loop(task_manager, players)
+    threading.Thread(target=event_loop, args=(
+        task_manager, players, app_state), daemon=True).start()
+
+    input(":")
+    app_state["start"] = True
+    input(":")
 
 
 if __name__ == "__main__":
