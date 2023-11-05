@@ -33,6 +33,9 @@ class Bomb:
             if val == K_WALL or val in K_BOMB or val in K_EXPLOSION:
                 break
 
+            if val in POWER_UP:
+                continue
+
             tiles.append((player_x, player_y - i))
 
             if val == K_BOX:
@@ -43,6 +46,9 @@ class Bomb:
             val = MATRIX[player_y + i][player_x]
             if val == K_WALL or val in K_BOMB or val in K_EXPLOSION:
                 break
+
+            if val in POWER_UP:
+                continue
 
             tiles.append((player_x, player_y + i))
 
@@ -63,6 +69,9 @@ class Bomb:
             if val == K_WALL or val in K_BOMB or val in K_EXPLOSION:
                 break
 
+            if val in POWER_UP:
+                continue
+
             tiles.append((player_x - i, player_y))
 
             if val == K_BOX:
@@ -73,6 +82,9 @@ class Bomb:
             val = MATRIX[player_y][player_x + i]
             if val == K_WALL or val in K_BOMB or val in K_EXPLOSION:
                 break
+
+            if val in POWER_UP:
+                continue
 
             tiles.append((player_x + i, player_y))
 
