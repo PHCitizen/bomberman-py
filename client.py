@@ -19,7 +19,8 @@ class State:
         self.player_index = -1
 
         self.socket = None
-        self.file = None
+        self.file: socket.SocketIO = None
+        self.winner = None
 
 
 def socket_thread(state: State):
@@ -39,11 +40,7 @@ def socket_thread(state: State):
             continue
         buffer += new_data
 
-        if buffer == b"explosion$|$\n":
-            explosion_sound().play(0)
-        elif buffer == b"ghost$|$\n":
-            ghost_sound().play(0)
-        elif buffer.startswith(b"pdata:"):
+        if buffer.startswith(b"pdata:"):
             data = buffer.removesuffix(b"$|$\n")
             data = data.split(b":", 1)[1]
             state.players = pickle.loads(data)
@@ -56,6 +53,14 @@ def socket_thread(state: State):
                     data, dtype=np.uint8).reshape(MATRIX.shape)
             except zlib.error as e:
                 print(buffer, e)
+        elif buffer == b"explosion$|$\n":
+            explosion_sound().play(0)
+        elif buffer == b"ghost$|$\n":
+            ghost_sound().play(0)
+        elif buffer.startswith(b"winner:"):
+            winner = buffer.removesuffix(b"$|$\n").split(b":")[1].decode()
+            print(winner)
+            state.winner = winner
         else:
             print("Unknown message", buffer)
 
@@ -129,6 +134,9 @@ def game_phase(state: State):
     window = pygame.display.set_mode((GAME_WIDTH, GAME_HEIGHT + CELL_SIZE))
 
     while True:
+        if state.winner is not None:
+            break
+
         current_player = state.players[state.player_index]
 
         for event in pygame.event.get():
@@ -149,6 +157,35 @@ def game_phase(state: State):
         window.blit(stats_window, (0, 0))
         game_obj.update(state.players, state.matrix)
         window.blit(game_obj.surface, (0, CELL_SIZE))
+
+        pygame.display.update()
+        clock.tick(FPS)
+
+
+def winner_phase(state: State):
+    bgmusic().stop()
+
+    window = pygame.display.set_mode((500, 200))
+    clock = pygame.time.Clock()
+    winner = text(20, f'{state.winner} wins!!!', True, "#d7fcd4")
+    exit_btn = Button(None, (250, 100),
+                      " Exit ", font(20), "#d7fcd4", "White")
+
+    run = True
+    while run:
+        mouse_position = pygame.mouse.get_pos()
+        window.blit(get_background(), (0, 0))
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if exit_btn.checkForInput(mouse_position):
+                    run = False
+
+        window.blit(winner, (0, 50))
+        exit_btn.update(window, mouse_position)
 
         pygame.display.update()
         clock.tick(FPS)
@@ -181,6 +218,7 @@ def main():
     threading.Thread(target=socket_thread, args=(state,), daemon=True).start()
     waiting_phase(state)
     game_phase(state)
+    winner_phase(state)
 
 
 if __name__ == "__main__":

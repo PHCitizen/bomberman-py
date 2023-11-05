@@ -97,27 +97,40 @@ def broadcast(players, data):
             continue
 
 
+def has_winner(players: list[Player]):
+    if len(players) <= 1:
+        return (False, -1)
+
+    lives = list(map(lambda v: v[2].lives, players))
+    count = 0
+    for index, live in enumerate(lives):
+        if live != 0:
+            count += 1
+
+    if count == 1:
+        return (True, index)
+    return (False, -1)
+
+
 def event_loop(task_manager, players: list[tuple[None, None, Player]], appstate):
     """
     Pygame window
     """
 
     pygame.init()
-    # window = pygame.display.set_mode((500, 200))
-    # pygame.display.set_caption("BomberPy - Host")
+    window = pygame.display.set_mode((500, 200))
+    pygame.display.set_caption("BomberPy - Host")
     clock = pygame.time.Clock()
 
-    # Singleton
     start_btn = Button(None, (250, 50),
                        " Start ", font(30), "#d7fcd4", "White")
 
-    # States:
-    # start = False
     last_matrix = b""
     last_pdata = b""
+    winner = -1
 
     while True:
-        # window.blit(get_background(), (0, 0))
+        window.blit(get_background(), (0, 0))
         mouse_position = pygame.mouse.get_pos()
 
         # process events
@@ -127,13 +140,18 @@ def event_loop(task_manager, players: list[tuple[None, None, Player]], appstate)
                 exit()
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if start_btn.checkForInput(mouse_position):
-                    start = True
+                    appstate["start"] = True
             elif event.type == E_EXPLOSION:
                 broadcast(players, b"explosion$|$\n")
             elif event.type == E_GHOST:
                 broadcast(players, b"ghost$|$\n")
 
-        # check if player steps on tile with explotion
+        one_alive, index = has_winner(players)
+        if one_alive:
+            winner = players[index][2].name
+            break
+
+        # check if player steps on tile with explosion
         player_tile = [(player.calc_player_tile(), player)  # pre-calc player tile
                        for _, _, player in players]
         for (y, x), matrix_value in np.ndenumerate(MATRIX):
@@ -156,12 +174,14 @@ def event_loop(task_manager, players: list[tuple[None, None, Player]], appstate)
 
                         MATRIX[y][x] = K_SPACE
 
-        # for i, (player_socket, _, player) in enumerate(players):
-        #     is_connected = "Disconnected" if player_socket is None else "Connected"
-        #     window.blit(
-        #         text(20, f'{player.name} - {is_connected}', True, "#d7fcd4"),
-        #         (0, 100 + (20 * i))
-        #     )
+        for i, (player_socket, _, player) in enumerate(players):
+            is_connected = "Disconnected" if player_socket is None else "Connected"
+            is_alive = "Alive" if player.lives > 0 else "Dead"
+            window.blit(
+                text(
+                    15, f'{player.name} - {is_alive} - {is_connected}', True, "#d7fcd4"),
+                (0, 100 + (20 * i))
+            )
 
         if appstate["start"]:
             # send current matrix and player data for each player
@@ -171,23 +191,47 @@ def event_loop(task_manager, players: list[tuple[None, None, Player]], appstate)
                 broadcast(players, b"pdata:" + pdata + b"$|$\n")
                 last_pdata = pdata
 
-            matrix_data = zlib.compress(MATRIX.tobytes())
+            matrix_data = MATRIX.tobytes()
             if matrix_data != last_matrix:
-                broadcast(players, b"matrix:" + matrix_data + b"$|$\n")
+                broadcast(players, b"matrix:" +
+                          zlib.compress(matrix_data) + b"$|$\n")
                 last_matrix = matrix_data
 
             # game status
-            # window.blit(
-            #     text(20, 'Game started', True, "#d7fcd4"),
-            #     (125, 30),
-            # )
+            window.blit(
+                text(20, 'Game started', True, "#d7fcd4"),
+                (125, 30),
+            )
         else:
-            pass
-            # start_btn.update(window, mouse_position)
+            start_btn.update(window, mouse_position)
 
         # update
         task_manager.tick()
-        # pygame.display.update()
+        pygame.display.update()
+        clock.tick(FPS)
+
+    broadcast(players, f"winner:{winner}$|$\n".encode())
+
+    winner_text = text(20, f'{winner} wins!!!', True, "#d7fcd4")
+    exit_btn = Button(None, (250, 100),
+                      " Exit ", font(20), "#d7fcd4", "White")
+    run = True
+    while run:
+        mouse_position = pygame.mouse.get_pos()
+        window.blit(get_background(), (0, 0))
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if exit_btn.checkForInput(mouse_position):
+                    run = False
+
+        window.blit(winner_text, (0, 50))
+        exit_btn.update(window, mouse_position)
+
+        pygame.display.update()
         clock.tick(FPS)
 
 
@@ -206,12 +250,12 @@ def main():
     # pass shared state different process
     threading.Thread(target=host_thread, args=(
         host, port, task_manager, players), daemon=True).start()
-    threading.Thread(target=event_loop, args=(
-        task_manager, players, app_state), daemon=True).start()
-
-    input(":")
-    app_state["start"] = True
-    input(":")
+    # threading.Thread(target=event_loop, args=(
+    #     task_manager, players, app_state), daemon=True).start()
+    # input(":")
+    # app_state["start"] = True
+    # input(":")
+    event_loop(task_manager, players, app_state)
 
 
 if __name__ == "__main__":
