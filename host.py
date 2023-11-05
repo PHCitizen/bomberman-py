@@ -5,7 +5,7 @@ import zlib
 import random
 import pickle
 
-from player import Player
+from player import *
 from settings import *
 from assets import *
 from task import Task
@@ -17,7 +17,7 @@ def message_handler(players, index: int, conn: socket.socket, file: socket.Socke
     Handle player msg.
     if message match certain action, do it
     """
-    current_player = players[index][2]
+    current_player: Player = players[index][2]
 
     while True:
         try:
@@ -37,9 +37,14 @@ def message_handler(players, index: int, conn: socket.socket, file: socket.Socke
                 current_player.bomber_man()
             elif data.startswith(b"name:"):
                 current_player.name = data.rstrip().split(b":")[1].decode()
+            elif data.startswith(b"character:"):
+                character = data.rstrip().split(b":")[1].decode()
+                character = int(character)
+                current_player.character = PlayerSprite(character)
             else:
                 print(data)
-        except Exception:
+        except Exception as e:
+            print(e)
             break
 
     # Player disconnect. do cleanup

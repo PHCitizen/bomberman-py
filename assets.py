@@ -54,6 +54,7 @@ def explosion_frame(n):
 
 @cache
 def font(size):
+    print(f"[ DEBUG ] Loaded font size {size}")
     return pygame.font.Font("./graphics/font.ttf", size)
 
 
