@@ -25,9 +25,7 @@ K_EXTRA_BOMB = 31
 K_INC_BOMB_RANGE = 32
 K_MOVE_SPEED = 33
 K_DEATH = 34
-POWER_UP = [K_LIVES, K_EXTRA_BOMB, K_MOVE_SPEED, K_INC_BOMB_RANGE
-            #  , , K_DEATH
-            ]
+POWER_UP = [K_LIVES, K_EXTRA_BOMB, K_MOVE_SPEED, K_INC_BOMB_RANGE, K_DEATH]
 
 MATRIX = np.array([
     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],

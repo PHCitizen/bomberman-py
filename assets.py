@@ -59,8 +59,9 @@ def heart_sprites():
 
 
 @cache
-def player_sprites():
-    image = pygame.image.load("./graphics/characters/1.png").convert_alpha()
+def skull_sprite():
+    image = pygame.image.load(
+        "./graphics/skull.png").convert_alpha()
     return pygame.transform.scale(image, CELL_RECT)
 
 

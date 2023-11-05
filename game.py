@@ -53,7 +53,7 @@ class Game:
             elif matrix_value == K_MOVE_SPEED:
                 self.surface.blit(movement_speed_sprite(), position)
             elif matrix_value == K_DEATH:
-                pass
+                self.surface.blit(skull_sprite(), position)
 
         for player in players:
             player.update(self.surface)
