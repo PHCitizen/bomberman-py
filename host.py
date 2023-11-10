@@ -4,6 +4,7 @@ import pygame
 import zlib
 import random
 import pickle
+import sys
 
 from player import *
 from settings import *
@@ -236,7 +237,11 @@ def event_loop(task_manager, players: list[tuple[None, None, Player]], appstate)
 
 
 def main():
-    host, port = '0.0.0.0', 8888
+    host = '0.0.0.0'
+    try:
+        port = int(sys.argv[1])
+    except IndexError:
+        port = 8888
 
     # randomize field
     for y, x in np.argwhere(MATRIX == K_RANDOM):

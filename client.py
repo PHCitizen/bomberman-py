@@ -4,6 +4,7 @@ import socket
 import threading
 import zlib
 import os
+import sys
 
 from player import *
 from settings import *
@@ -194,11 +195,21 @@ def winner_phase(state: State):
 def main():
     pygame.init()
 
+    try:
+        host = sys.argv[1]
+    except IndexError:
+        host = "localhost"
+
+    try:
+        port = int(sys.argv[2])
+    except IndexError:
+        port = 8888
+
     state = State()
 
     try:
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        client_socket.connect(("localhost", 8888))
+        client_socket.connect((host, port))
         client_file = socket.SocketIO(client_socket, "rwb")
 
         state.file = client_file
