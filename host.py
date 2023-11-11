@@ -11,14 +11,26 @@ from settings import *
 from assets import *
 from task import Task
 from button import Button
+from bomb import BombFactory
 
 
-def message_handler(players, index: int, conn: socket.socket, file: socket.SocketIO):
+class State:
+    def __init__(self):
+        self.start = False
+        self.players: list[tuple[socket.socket, socket.SocketIO, Player]] = []
+        self.task_manager = Task()
+        self.bomb_factory = BombFactory(self.task_manager, list(map(lambda p: p[2], self.players)))
+
+        # ? if our host will run on server without display
+        self.headless = False
+
+
+def message_handler(players, index: int):
     """
     Handle player msg.
     if message match certain action, do it
     """
-    current_player: Player = players[index][2]
+    conn, file, current_player = players[index]
 
     while True:
         try:
@@ -54,7 +66,7 @@ def message_handler(players, index: int, conn: socket.socket, file: socket.Socke
     conn.close()
 
 
-def host_thread(host, port, task_manager, players):
+def host_thread(host, port, state: State):
     """
     This host thread
     used to accept new connection and create new player
@@ -66,24 +78,31 @@ def host_thread(host, port, task_manager, players):
     server_socket.listen(MAX_PLAYER)
     print("server started")
 
-    # accept only 'MAX_PLAYER' amount of connection
-    for i in range(MAX_PLAYER):
+    i = 0
+    while True:
+        if state.start:
+            break
+
         # player connection obj
         player_socket, _ = server_socket.accept()
         file = socket.SocketIO(player_socket, "rwb")
-        new_player = Player(task_manager, DEFAULT_COORD[i], f"Player {i}", 1)
+        new_player = Player(state.task_manager, state.bomb_factory, DEFAULT_COORD[i], f"Player {i}", 1)
 
         # send to player the player_id
         player_socket.sendall(i.to_bytes(16, "big") + b"\n")
-        players.append((player_socket, file, new_player))
+
+        # update state
+        state.players.append((player_socket, file, new_player))
+        state.bomb_factory = BombFactory(state.task_manager, list(map(lambda p: p[2], state.players)))
 
         # process player message individually, (non-blocking)
         threading.Thread(
             target=message_handler,
-            args=(players, i, player_socket, file),
+            args=(state.players, i),
             daemon=True).start()
 
         print(f"Player {i} connected")
+        i += 1
 
 
 def broadcast(players, data):
@@ -100,20 +119,19 @@ def broadcast(players, data):
 
 def has_winner(players: list[Player]):
     if len(players) <= 1:
-        return (False, -1)
+        return None
 
-    lives = list(map(lambda v: v[2].lives, players))
-    count = 0
-    for index, live in enumerate(lives):
-        if live != 0:
-            count += 1
+    alive: list[tuple[int, Player]] = []
+    for i, player in enumerate(players):
+        if player.lives != 0:
+            alive.append((i, player))
 
-    if count == 1:
-        return (True, index)
-    return (False, -1)
+    if len(alive) == 1:
+        return alive[0]
+    return None
 
 
-def event_loop(task_manager, players: list[tuple[None, None, Player]], appstate):
+def event_loop(state: State):
     """
     Pygame window
     """
@@ -128,7 +146,6 @@ def event_loop(task_manager, players: list[tuple[None, None, Player]], appstate)
 
     last_matrix = b""
     last_pdata = b""
-    winner = -1
 
     while True:
         window.blit(get_background(), (0, 0))
@@ -141,20 +158,19 @@ def event_loop(task_manager, players: list[tuple[None, None, Player]], appstate)
                 exit()
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if start_btn.checkForInput(mouse_position):
-                    appstate["start"] = True
+                    state.start = True
             elif event.type == E_EXPLOSION:
-                broadcast(players, b"explosion$|$\n")
+                broadcast(state.players, b"explosion$|$\n")
             elif event.type == E_GHOST:
-                broadcast(players, b"ghost$|$\n")
+                broadcast(state.players, b"ghost$|$\n")
 
-        one_alive, index = has_winner(players)
-        if one_alive:
-            winner = players[index][2].name
+        winner = has_winner(list(map(lambda p: p[2], state.players)))
+        if winner is not None:
             break
 
         # check if player steps on tile with explosion
         player_tile = [(player.calc_player_tile(), player)  # pre-calc player tile
-                       for _, _, player in players]
+                       for _, _, player in state.players]
         for (y, x), matrix_value in np.ndenumerate(MATRIX):
             for (px, py), player in player_tile:
                 if px == x and py == y:
@@ -175,7 +191,7 @@ def event_loop(task_manager, players: list[tuple[None, None, Player]], appstate)
 
                         MATRIX[y][x] = K_SPACE
 
-        for i, (player_socket, _, player) in enumerate(players):
+        for i, (player_socket, _, player) in enumerate(state.players):
             is_connected = "Disconnected" if player_socket is None else "Connected"
             is_alive = "Alive" if player.lives > 0 else "Dead"
             window.blit(
@@ -184,18 +200,17 @@ def event_loop(task_manager, players: list[tuple[None, None, Player]], appstate)
                 (0, 100 + (20 * i))
             )
 
-        if appstate["start"]:
+        if state.start:
             # send current matrix and player data for each player
 
-            pdata = pickle.dumps(list(map(lambda p: p[2], players)))
+            pdata = pickle.dumps(list(map(lambda p: p[2], state.players)))
             if pdata != last_pdata:
-                broadcast(players, b"pdata:" + pdata + b"$|$\n")
+                broadcast(state.players, b"pdata:" + pdata + b"$|$\n")
                 last_pdata = pdata
 
             matrix_data = MATRIX.tobytes()
             if matrix_data != last_matrix:
-                broadcast(players, b"matrix:" +
-                          zlib.compress(matrix_data) + b"$|$\n")
+                broadcast(state.players, b"matrix:" + zlib.compress(matrix_data) + b"$|$\n")
                 last_matrix = matrix_data
 
             # game status
@@ -207,13 +222,13 @@ def event_loop(task_manager, players: list[tuple[None, None, Player]], appstate)
             start_btn.update(window, mouse_position)
 
         # update
-        task_manager.tick()
+        state.task_manager.tick()
         pygame.display.update()
         clock.tick(FPS)
 
-    broadcast(players, f"winner:{winner}$|$\n".encode())
+    broadcast(state.players, f"winner:{winner[0]}$|$\n".encode())
 
-    winner_text = text(20, f'{winner} wins!!!', True, "#d7fcd4")
+    winner_text = text(20, f'{winner[1].name} wins!!!', True, "#d7fcd4")
     exit_btn = Button(None, (250, 100),
                       " Exit ", font(20), "#d7fcd4", "White")
     run = True
@@ -248,19 +263,17 @@ def main():
         MATRIX[y][x] = random.choice([K_SPACE, K_BOX])
 
     # shared state
-    app_state = {"start": False}
-    task_manager = Task()
-    players: list[tuple[socket.socket, socket.SocketIO, Player]] = []
+    state = State()
 
     # pass shared state different process
     threading.Thread(target=host_thread, args=(
-        host, port, task_manager, players), daemon=True).start()
+        host, port, state), daemon=True).start()
     # threading.Thread(target=event_loop, args=(
     #     task_manager, players, app_state), daemon=True).start()
     # input(":")
     # app_state["start"] = True
     # input(":")
-    event_loop(task_manager, players, app_state)
+    event_loop(state)
 
 
 if __name__ == "__main__":

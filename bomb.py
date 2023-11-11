@@ -4,18 +4,17 @@ from settings import *
 
 
 class Bomb:
-    def __init__(self, task, tile_x, tile_y, bomb_range):
+    def __init__(self, player, task, position):
         self.task = task
-        self.tile_x = tile_x
-        self.tile_y = tile_y
-        self.range = bomb_range
+        self.player = player
+        self.position = position
 
         self.frame = 0
         self.speed = 250
         self.move_frame()
 
     def move_frame(self):
-        MATRIX[self.tile_y][self.tile_x] = K_BOMB_START + self.frame
+        MATRIX[self.position[1]][self.position[0]] = K_BOMB_START + self.frame
 
         if self.frame <= K_BOMB_END - K_BOMB_START:
             self.task.add(self.speed, self.move_frame)
@@ -24,11 +23,11 @@ class Bomb:
             self.explode()
 
     def calc_vertical_expl(self):
-        player_x, player_y = self.tile_x, self.tile_y
+        player_x, player_y = self.position
 
         tiles = []
         boxs = []
-        for i in range(1, self.range + 1):
+        for i in range(1, self.player.bomb_range + 1):
             val = MATRIX[player_y - i][player_x]
             if val == K_WALL or val in K_BOMB or val in K_EXPLOSION:
                 break
@@ -42,7 +41,7 @@ class Bomb:
                 boxs.append((player_x, player_y - i))
                 break
 
-        for i in range(1, self.range + 1):
+        for i in range(1, self.player.bomb_range + 1):
             val = MATRIX[player_y + i][player_x]
             if val == K_WALL or val in K_BOMB or val in K_EXPLOSION:
                 break
@@ -59,12 +58,12 @@ class Bomb:
         return tiles, boxs
 
     def calc_horizontal_expl(self):
-        player_x, player_y = self.tile_x, self.tile_y
+        player_x, player_y = self.position
 
         tiles = []
         boxs = []
 
-        for i in range(1, self.range + 1):
+        for i in range(1, self.player.bomb_range + 1):
             val = MATRIX[player_y][player_x - i]
             if val == K_WALL or val in K_BOMB or val in K_EXPLOSION:
                 break
@@ -78,7 +77,7 @@ class Bomb:
                 boxs.append((player_x - i, player_y))
                 break
 
-        for i in range(1, self.range + 1):
+        for i in range(1, self.player.bomb_range + 1):
             val = MATRIX[player_y][player_x + i]
             if val == K_WALL or val in K_BOMB or val in K_EXPLOSION:
                 break
@@ -96,23 +95,34 @@ class Bomb:
 
     def explode(self):
         pygame.event.post(pygame.Event(E_EXPLOSION))
-        tile_x, tile_y = self.tile_x, self.tile_y
 
         tile1, boxs1 = self.calc_vertical_expl()
         tile2, boxs2 = self.calc_horizontal_expl()
         tiles = tile1 + tile2
-        tiles.append((tile_x, tile_y))
+        tiles.append(self.position)
         boxs = boxs1 + boxs2
 
-        Explotion(self.task, tiles, boxs, 100)
+        # ? increment player points by how many box it destroy
+        self.player.points += len(boxs) * PTS_BOX
+
+        Explosion(self.task, tiles, boxs)
 
 
-class Explotion:
-    def __init__(self, task, tiles, boxs, speed):
+class BombFactory:
+    def __init__(self, task, players):
+        self.task = task
+        self.players = players
+
+    def place(self, player, position):
+        Bomb(player, self.task, position)
+
+
+class Explosion:
+    def __init__(self, task, tiles, boxs):
         self.task = task
         self.tiles = tiles
         self.boxs = boxs
-        self.speed = speed
+        self.speed = 100
         self.frame = 0
         self.move_frame()
 

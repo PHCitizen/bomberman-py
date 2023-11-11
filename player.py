@@ -1,7 +1,6 @@
 import pygame
 from settings import *
 from functools import cache
-from bomb import Bomb
 from assets import get_image
 
 
@@ -93,13 +92,16 @@ class PlayerSprite:
 
 
 class Player:
-    def __init__(self, task,  pos, name, character):
+    def __init__(self, task, bomb_factory,  pos, name, character):
         self.name = name
+        self.points = 0
+
         self.rect = pygame.Rect((0, 0), (CELL_SIZE, CELL_SIZE))
         self.rect.x = pos[0] * CELL_SIZE
         self.rect.y = pos[1] * CELL_SIZE
 
         self.task = task
+        self.bomb_factory = bomb_factory
 
         self.movement_speed = 2
         self.bombs = 2
@@ -114,10 +116,10 @@ class Player:
         self.character = PlayerSprite(character)
 
     def __getstate__(self):
-        return self.rect, self.bombs, self.lives, self.ghost_mode, self.name, self.character
+        return self.rect, self.bombs, self.lives, self.ghost_mode, self.name, self.character, self.points
 
     def __setstate__(self, state):
-        self.rect, self.bombs, self.lives, self.ghost_mode, self.name, self.character = state
+        self.rect, self.bombs, self.lives, self.ghost_mode, self.name, self.character, self.points = state
 
     def move_up(self):
         if self.lives == 0:
@@ -169,7 +171,7 @@ class Player:
         if self.bombs == 0 or self.ghost_mode or self.lives == 0 or MATRIX[player_y][player_x] != K_SPACE:
             return
 
-        Bomb(self.task, player_x, player_y, self.bomb_range)
+        self.bomb_factory.place(self, (player_x, player_y))
         self.bombs -= 1
 
         def recharge():

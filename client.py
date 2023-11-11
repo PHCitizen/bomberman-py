@@ -159,6 +159,11 @@ def game_phase(state: State):
         game_obj.update(state.players, state.matrix)
         window.blit(game_obj.surface, (0, CELL_SIZE))
 
+        pts_text = font(30).render(
+            f"{current_player.points}", True, color=C_INACTIVE)
+        pts_rect = pts_text.get_rect(center=(GAME_WIDTH // 2, CELL_SIZE // 2))
+        window.blit(pts_text, pts_rect)
+
         pygame.display.update()
         clock.tick(FPS)
 
