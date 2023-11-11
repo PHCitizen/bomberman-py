@@ -13,7 +13,7 @@ def get_image(sprite: pygame.Surface, frame, width, height):
 
     surface.blit(sprite, (0, 0), (x_frame * width, y_frame * height,
                                   width, height))
-    return pygame.transform.scale(surface, CELL_RECT)
+    return surface
 
 
 @cache
@@ -31,7 +31,7 @@ def box_sprites():
 @cache
 def bomb_frame(n):
     image = pygame.image.load("./graphics/bomb.png").convert_alpha()
-    return get_image(image, n, 32, 32)
+    return pygame.transform.scale(get_image(image, n, 32, 32), CELL_RECT)
 
 
 @cache
@@ -68,7 +68,7 @@ def skull_sprite():
 @cache
 def explosion_frame(n):
     image = pygame.image.load("./graphics/explosions.png").convert_alpha()
-    return get_image(image, n, 32, 32)
+    return pygame.transform.scale(get_image(image, n, 32, 32), CELL_RECT)
 
 
 @cache
@@ -111,7 +111,7 @@ def walk_sound():
 class Grass:
     def __init__(self):
         sprite = pygame.image.load("./graphics/grass2.png").convert_alpha()
-        self.grass = {i: get_image(sprite, i, 32, 32)
+        self.grass = {i: pygame.transform.scale(get_image(sprite, i, 32, 32), CELL_RECT)
                       for i in range(32)}
         self.seeded_grass = {}
 

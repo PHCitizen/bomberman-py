@@ -88,7 +88,8 @@ class PlayerSprite:
         self.last_update = current_time
 
     def get(self):
-        return get_image(self.sprite, self.frame, CELL_SIZE, CELL_SIZE)
+        image = get_image(self.sprite, self.frame, 32, 32)
+        return pygame.transform.scale(image, CELL_RECT)
 
 
 class Player:
