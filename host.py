@@ -2,7 +2,6 @@ import socket
 import threading
 import pygame
 import zlib
-import random
 import pickle
 import sys
 import time
@@ -21,8 +20,7 @@ class State:
         self.start = False
         self.players: list[tuple[socket.socket, socket.SocketIO, Player]] = []
         self.task_manager = Task()
-        self.bomb_factory = BombFactory(
-            self.task_manager, list(map(lambda p: p[2], self.players)))
+        self.bomb_factory = BombFactory(self.task_manager, self.players)
 
         # ? if our host will run on server without display
         self.headless = False
@@ -57,6 +55,7 @@ def message_handler(players, index: int):
             elif data.startswith(b"character:"):
                 character = data.rstrip().split(b":")[1].decode()
                 character = int(character)
+                current_player.character_id = character
                 current_player.character = PlayerSprite(character)
             else:
                 print(data)
@@ -98,8 +97,7 @@ def host_thread(host, port, state: State):
 
         # update state
         state.players.append((player_socket, file, new_player))
-        state.bomb_factory = BombFactory(
-            state.task_manager, list(map(lambda p: p[2], state.players)))
+        state.bomb_factory = BombFactory(state.task_manager, state.players)
 
         # process player message individually, (non-blocking)
         threading.Thread(
@@ -138,9 +136,7 @@ def has_winner(players: list[Player]):
 
 
 def game(round, state: State):
-    # randomize field
-    for y, x in np.argwhere(MATRIX == K_RANDOM):
-        MATRIX[y][x] = random.choice([K_SPACE, K_BOX])
+    reset_matrix()
 
     broadcast(state.players, f"round:{round}$|$\n".encode())
     for i in range(PLAY_WAIT_TIME, 0, -1):
@@ -176,9 +172,6 @@ def game(round, state: State):
         for (y, x), matrix_value in np.ndenumerate(MATRIX):
             for (px, py), player in player_tile:
                 if px == x and py == y:
-                    if matrix_value in K_EXPLOSION:
-                        player.kill()
-
                     if matrix_value in POWER_UP and not player.ghost_mode:
                         if matrix_value == K_LIVES:
                             player.lives += 1
@@ -227,6 +220,7 @@ def play(state: State):
 
         game(current_round, state)
 
+        state.task_manager.task_list = []
         # reset player to default attr
         for id, (conn, file, player) in enumerate(state.players):
             new_player = Player(state.task_manager, state.bomb_factory,

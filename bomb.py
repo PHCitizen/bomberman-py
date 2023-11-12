@@ -4,9 +4,10 @@ from settings import *
 
 
 class Bomb:
-    def __init__(self, player, task, position):
+    def __init__(self, players, player, task, position):
         self.task = task
         self.player = player
+        self.players = players
         self.position = position
 
         self.frame = 0
@@ -105,7 +106,7 @@ class Bomb:
         # ? increment player points by how many box it destroy
         self.player.points += len(boxs) * PTS_BOX
 
-        Explosion(self.task, tiles, boxs)
+        Explosion(self.task, self.players, self.player, tiles, boxs)
 
 
 class BombFactory:
@@ -114,12 +115,14 @@ class BombFactory:
         self.players = players
 
     def place(self, player, position):
-        Bomb(player, self.task, position)
+        Bomb(self.players, player, self.task, position)
 
 
 class Explosion:
-    def __init__(self, task, tiles, boxs):
+    def __init__(self, task, players, player, tiles, boxs):
         self.task = task
+        self.players = players
+        self.player = player
         self.tiles = tiles
         self.boxs = boxs
         self.speed = 100
@@ -128,6 +131,21 @@ class Explosion:
 
     def move_frame(self):
         self.set_frame(K_EXPLOSION_START + self.frame)
+
+        player_tile = [(player.calc_player_tile(), player)  # pre-calc player tile
+                       for _, _, player in self.players]
+        for (y, x), matrix_value in np.ndenumerate(MATRIX):
+            for (px, py), player in player_tile:
+                if px == x and py == y:
+                    if matrix_value in K_EXPLOSION:
+                        if player == self.player:
+                            if not self.player.ghost_mode:
+                                self.player.kill()
+                                self.player.points += PTS_SUICIDE
+                        else:
+                            if not player.ghost_mode:
+                                player.kill()
+                                self.player.points += PTS_KILL
 
         if self.frame <= K_EXPLOSION_END - K_EXPLOSION_START:
             self.task.add(self.speed, self.move_frame)

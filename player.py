@@ -109,7 +109,7 @@ class Player:
         self.bombs = 2
         self.bomb_recharge_time = 5000
 
-        self.lives = 1
+        self.lives = 3
         self.ghost_mode = False
         self.ghost_mode_duration = 5000
         self.bomb_range = 2

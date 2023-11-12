@@ -1,12 +1,16 @@
+import random
 import pygame
 import numpy as np
+
 
 E_EXPLOSION = pygame.USEREVENT + 1
 E_GHOST = pygame.USEREVENT + 2
 
 PTS_BOX = 5
+PTS_KILL = 15
+PTS_SUICIDE = -10
 PLAY_TIME = 60 * 3
-PLAY_WAIT_TIME = 5
+PLAY_WAIT_TIME = 1
 LIFE_PTS_CONVERTION = 50
 
 C_ACTIVE = "#00ff00"
@@ -45,6 +49,19 @@ MATRIX = np.array([
     [1, 0, 0, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 4, 0, 0, 1],
     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
 ], dtype=np.uint8)
+
+MATRIX_BASE = MATRIX.copy()
+
+
+def reset_matrix():
+    global MATRIX, MATRIX_BASE
+
+    for y in range(GAME_ROWS):
+        MATRIX[y] = MATRIX_BASE[y].copy()
+
+    # randomize field
+    for y, x in np.argwhere(MATRIX == K_RANDOM):
+        MATRIX[y][x] = random.choice([K_SPACE, K_BOX])
 
 
 FPS = 30
