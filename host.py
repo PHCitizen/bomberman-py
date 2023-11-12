@@ -5,6 +5,8 @@ import zlib
 import random
 import pickle
 import sys
+import time
+from datetime import datetime
 
 from player import *
 from settings import *
@@ -19,7 +21,8 @@ class State:
         self.start = False
         self.players: list[tuple[socket.socket, socket.SocketIO, Player]] = []
         self.task_manager = Task()
-        self.bomb_factory = BombFactory(self.task_manager, list(map(lambda p: p[2], self.players)))
+        self.bomb_factory = BombFactory(
+            self.task_manager, list(map(lambda p: p[2], self.players)))
 
         # ? if our host will run on server without display
         self.headless = False
@@ -30,9 +33,10 @@ def message_handler(players, index: int):
     Handle player msg.
     if message match certain action, do it
     """
-    conn, file, current_player = players[index]
 
     while True:
+        conn, file, current_player = players[index]
+
         try:
             data = file.readline()
             if not data:
@@ -86,14 +90,16 @@ def host_thread(host, port, state: State):
         # player connection obj
         player_socket, _ = server_socket.accept()
         file = socket.SocketIO(player_socket, "rwb")
-        new_player = Player(state.task_manager, state.bomb_factory, DEFAULT_COORD[i], f"Player {i}", 1)
+        new_player = Player(state.task_manager, state.bomb_factory,
+                            DEFAULT_COORD[i], f"Player {i}", 1)
 
         # send to player the player_id
         player_socket.sendall(i.to_bytes(16, "big") + b"\n")
 
         # update state
         state.players.append((player_socket, file, new_player))
-        state.bomb_factory = BombFactory(state.task_manager, list(map(lambda p: p[2], state.players)))
+        state.bomb_factory = BombFactory(
+            state.task_manager, list(map(lambda p: p[2], state.players)))
 
         # process player message individually, (non-blocking)
         threading.Thread(
@@ -131,41 +137,37 @@ def has_winner(players: list[Player]):
     return None
 
 
-def event_loop(state: State):
-    """
-    Pygame window
-    """
+def game(round, state: State):
+    # randomize field
+    for y, x in np.argwhere(MATRIX == K_RANDOM):
+        MATRIX[y][x] = random.choice([K_SPACE, K_BOX])
 
-    pygame.init()
-    window = pygame.display.set_mode((500, 200))
-    pygame.display.set_caption("BomberPy - Host")
+    broadcast(state.players, f"round:{round}$|$\n".encode())
+    for i in range(PLAY_WAIT_TIME, 0, -1):
+        broadcast(state.players, f"countdown:{i}$|$\n".encode())
+        time.sleep(1)
+
+    countdown = PLAY_TIME
+    last_time = datetime.now().timestamp()
+    broadcast(state.players, f"countdown:{countdown}$|$\n".encode())
+    broadcast(state.players, "go$|$\n".encode())
     clock = pygame.time.Clock()
-
-    start_btn = Button(None, (250, 50),
-                       " Start ", font(30), "#d7fcd4", "White")
 
     last_matrix = b""
     last_pdata = b""
 
     while True:
-        window.blit(get_background(), (0, 0))
-        mouse_position = pygame.mouse.get_pos()
-
-        # process events
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                exit()
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                if start_btn.checkForInput(mouse_position):
-                    state.start = True
-            elif event.type == E_EXPLOSION:
-                broadcast(state.players, b"explosion$|$\n")
-            elif event.type == E_GHOST:
-                broadcast(state.players, b"ghost$|$\n")
-
         winner = has_winner(list(map(lambda p: p[2], state.players)))
         if winner is not None:
+            break
+
+        current_time = datetime.now().timestamp()
+        if current_time - last_time >= 1:
+            countdown -= 1
+            broadcast(state.players, f"countdown:{countdown}$|$\n".encode())
+            last_time = current_time
+
+        if countdown <= 0:
             break
 
         # check if player steps on tile with explosion
@@ -191,6 +193,82 @@ def event_loop(state: State):
 
                         MATRIX[y][x] = K_SPACE
 
+        # send current matrix and player data for each player
+        pdata = pickle.dumps(list(map(lambda p: p[2], state.players)))
+        if pdata != last_pdata:
+            broadcast(state.players, b"pdata:" + pdata + b"$|$\n")
+            last_pdata = pdata
+
+        matrix_data = MATRIX.tobytes()
+        if matrix_data != last_matrix:
+            broadcast(state.players, b"matrix:" +
+                      zlib.compress(matrix_data) + b"$|$\n")
+            last_matrix = matrix_data
+
+        # update
+        state.task_manager.tick()
+        clock.tick(FPS)
+
+    # update player info for each player
+    for _, _, player in state.players:
+        player.points += player.lives * LIFE_PTS_CONVERTION
+    pdata = pickle.dumps(list(map(lambda p: p[2], state.players)))
+    broadcast(state.players, b"pdata:" + pdata + b"$|$\n")
+
+    broadcast(state.players, f"ranking$|$\n".encode())
+
+
+def play(state: State):
+    current_round = 1
+    while True:
+        if not state.start:
+            time.sleep(1)
+            continue
+
+        game(current_round, state)
+
+        # reset player to default attr
+        for id, (conn, file, player) in enumerate(state.players):
+            new_player = Player(state.task_manager, state.bomb_factory,
+                                player.pos, player.name, player.character_id)
+            new_player.points = player.points
+            state.players[id] = (conn, file, new_player)
+
+        current_round += 1
+
+
+def event_loop(state: State):
+    """
+    Pygame window
+    """
+
+    pygame.init()
+    window = pygame.display.set_mode((500, 200))
+    pygame.display.set_caption("BomberPy - Host")
+    clock = pygame.time.Clock()
+
+    start_btn = Button(None, (250, 50),
+                       " Start ", font(30), "#d7fcd4", "White")
+
+    threading.Thread(target=play, args=(state,), daemon=True).start()
+
+    while True:
+        window.blit(get_background(), (0, 0))
+        mouse_position = pygame.mouse.get_pos()
+
+        # process events
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if start_btn.checkForInput(mouse_position):
+                    state.start = True
+            elif event.type == E_EXPLOSION:
+                broadcast(state.players, b"explosion$|$\n")
+            elif event.type == E_GHOST:
+                broadcast(state.players, b"ghost$|$\n")
+
         for i, (player_socket, _, player) in enumerate(state.players):
             is_connected = "Disconnected" if player_socket is None else "Connected"
             is_alive = "Alive" if player.lives > 0 else "Dead"
@@ -201,18 +279,6 @@ def event_loop(state: State):
             )
 
         if state.start:
-            # send current matrix and player data for each player
-
-            pdata = pickle.dumps(list(map(lambda p: p[2], state.players)))
-            if pdata != last_pdata:
-                broadcast(state.players, b"pdata:" + pdata + b"$|$\n")
-                last_pdata = pdata
-
-            matrix_data = MATRIX.tobytes()
-            if matrix_data != last_matrix:
-                broadcast(state.players, b"matrix:" + zlib.compress(matrix_data) + b"$|$\n")
-                last_matrix = matrix_data
-
             # game status
             window.blit(
                 text(20, 'Game started', True, "#d7fcd4"),
@@ -226,30 +292,6 @@ def event_loop(state: State):
         pygame.display.update()
         clock.tick(FPS)
 
-    broadcast(state.players, f"winner:{winner[0]}$|$\n".encode())
-
-    winner_text = text(20, f'{winner[1].name} wins!!!', True, "#d7fcd4")
-    exit_btn = Button(None, (250, 100),
-                      " Exit ", font(20), "#d7fcd4", "White")
-    run = True
-    while run:
-        mouse_position = pygame.mouse.get_pos()
-        window.blit(get_background(), (0, 0))
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                exit()
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                if exit_btn.checkForInput(mouse_position):
-                    run = False
-
-        window.blit(winner_text, (0, 50))
-        exit_btn.update(window, mouse_position)
-
-        pygame.display.update()
-        clock.tick(FPS)
-
 
 def main():
     host = '0.0.0.0'
@@ -257,10 +299,6 @@ def main():
         port = int(sys.argv[1])
     except IndexError:
         port = 8888
-
-    # randomize field
-    for y, x in np.argwhere(MATRIX == K_RANDOM):
-        MATRIX[y][x] = random.choice([K_SPACE, K_BOX])
 
     # shared state
     state = State()

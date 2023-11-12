@@ -97,6 +97,7 @@ class Player:
         self.name = name
         self.points = 0
 
+        self.pos = pos
         self.rect = pygame.Rect((0, 0), (CELL_SIZE, CELL_SIZE))
         self.rect.x = pos[0] * CELL_SIZE
         self.rect.y = pos[1] * CELL_SIZE
@@ -108,12 +109,13 @@ class Player:
         self.bombs = 2
         self.bomb_recharge_time = 5000
 
-        self.lives = 3
+        self.lives = 1
         self.ghost_mode = False
         self.ghost_mode_duration = 5000
         self.bomb_range = 2
 
         self.frame = 0
+        self.character_id = character
         self.character = PlayerSprite(character)
 
     def __getstate__(self):

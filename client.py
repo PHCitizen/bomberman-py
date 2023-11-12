@@ -21,7 +21,10 @@ class State:
 
         self.socket = None
         self.file: socket.SocketIO = None
-        self.winner = None
+
+        self.state = GameState.WAITING_PHASE
+        self.round = 1
+        self.countdown = 5
 
 
 def socket_thread(state: State):
@@ -58,10 +61,15 @@ def socket_thread(state: State):
             explosion_sound().play(0)
         elif buffer == b"ghost$|$\n":
             ghost_sound().play(0)
-        elif buffer.startswith(b"winner:"):
-            winner = buffer.removesuffix(b"$|$\n").split(b":")[1].decode()
-            print(winner)
-            state.winner = winner
+        elif buffer.startswith(b"round:"):
+            game_round = buffer.removesuffix(b"$|$\n").split(b":")[1].decode()
+            state.state = GameState.RANKING_PHASE
+            state.round = game_round
+        elif buffer.startswith(b"countdown:"):
+            countdown = buffer.removesuffix(b"$|$\n").split(b":")[1].decode()
+            state.countdown = countdown
+        elif buffer == b"go$|$\n":
+            state.state = GameState.GAME_PHASE
         else:
             print("Unknown message", buffer)
 
@@ -95,7 +103,7 @@ def waiting_phase(state: State):
         mouse_position = pygame.mouse.get_pos()
         window.blit(get_background(), (0, 0))
 
-        if state.matrix is not None:
+        if state.state != GameState.WAITING_PHASE:
             break
 
         # Main screen
@@ -142,7 +150,7 @@ def game_phase(state: State):
     window = pygame.display.set_mode((GAME_WIDTH, GAME_HEIGHT + CELL_SIZE))
 
     while True:
-        if state.winner is not None:
+        if state.state != GameState.GAME_PHASE:
             break
 
         current_player = state.players[state.player_index]
@@ -166,6 +174,8 @@ def game_phase(state: State):
         game_obj.update(state.players, state.matrix)
         window.blit(game_obj.surface, (0, CELL_SIZE))
 
+        window.blit(text(20, state.countdown, True, "#ff0000"), (0, 0))
+
         pts_text = font(30).render(
             f"{current_player.points}", True, color=C_INACTIVE)
         pts_rect = pts_text.get_rect(center=(GAME_WIDTH // 2, CELL_SIZE // 2))
@@ -174,18 +184,22 @@ def game_phase(state: State):
         pygame.display.update()
         clock.tick(FPS)
 
+    bgmusic().stop()
 
-def winner_phase(state: State):
+
+def ranking_phase(state: State, with_coutdown):
     bgmusic().stop()
 
     window = pygame.display.set_mode((500, 200))
     clock = pygame.time.Clock()
-    winner = text(20, f'{state.winner} wins!!!', True, "#d7fcd4")
     exit_btn = Button(None, (250, 100),
                       " Exit ", font(20), "#d7fcd4", "White")
 
     run = True
     while run:
+        if state.state != GameState.RANKING_PHASE:
+            break
+
         mouse_position = pygame.mouse.get_pos()
         window.blit(get_background(), (0, 0))
 
@@ -197,8 +211,9 @@ def winner_phase(state: State):
                 if exit_btn.checkForInput(mouse_position):
                     run = False
 
-        window.blit(winner, (0, 50))
-        exit_btn.update(window, mouse_position)
+        window.blit(text(20, state.countdown, True, "#d7fcd4"), (0, 0))
+        # window.blit(winner, (0, 50))
+        # exit_btn.update(window, mouse_position)
 
         pygame.display.update()
         clock.tick(FPS)
@@ -239,9 +254,15 @@ def main():
 
     # start the app
     threading.Thread(target=socket_thread, args=(state,), daemon=True).start()
-    waiting_phase(state)
-    game_phase(state)
-    winner_phase(state)
+    while True:
+        if state.state == GameState.WAITING_PHASE:
+            waiting_phase(state)
+        elif state.state == GameState.RANKING_PHASE:
+            ranking_phase(state, True)
+        elif state.state == GameState.GAME_PHASE:
+            game_phase(state)
+        elif state.state == GameState.WINNER_PHASE:
+            ranking_phase(state, False)
 
 
 if __name__ == "__main__":
