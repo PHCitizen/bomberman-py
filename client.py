@@ -128,7 +128,7 @@ def waiting_phase(state: State):
                     state.file.write(f"character:{state.character}\n".encode())
                 except Exception as e:
                     pass
-            elif event.type == pygame.KEYDOWN and event.key == pygame.K_h:
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_h and not player_name.active:
                 state.prevstate = state.state
                 state.state = GameState.TUTORIAL
 
@@ -265,7 +265,20 @@ def ranking_phase(state: State, with_coutdown):
 
 
 def tutorial(state):
-    window = pygame.display.set_mode((650, 600))
+    help_msgs = f"""
+Point System:
+    * Clear Box +{PTS_BOX}pts
+    * Kill opponent +{PTS_KILL}pts
+    * Suicide {PTS_SUICIDE}pts
+Note:
+    * Whoever has the highest score will 
+        be the winner
+    * Each round has a maximum of 3 minutes
+    * After each round, life will be 
+        converted to pts. 1 life = {LIFE_PTS_CONVERTION} pts
+    """
+
+    window = pygame.display.set_mode((650, 650))
     clock = pygame.time.Clock()
 
     exit_text = text(10, "Press 'esc' to exit", True, "#d7fcd4")
@@ -353,19 +366,10 @@ def tutorial(state):
         # ================
         # Note
         # ================
-
-        texts = text(15,
-                     f"""
-Note:
-    * The game will run for 3 rounds
-    * Whoever has the highest score will 
-        be the winner
-    * Each round has a maximum of 3 minutes
-    * After each round, life will be 
-        converted to pts. 1 life = {LIFE_PTS_CONVERTION} pts
-                     """, True, "#d7fcd4")
-        rect = texts.get_rect(left=0, top=img_rect.bottom + 10)
-        window.blit(texts, rect)
+        for msg in help_msgs.split("\n"):
+            texts = text(15, msg, True, "#d7fcd4")
+            rect = texts.get_rect(left=0, top=rect.bottom + 5)
+            window.blit(texts, rect)
 
         # exit text
         window.blit(exit_text, exit_text_rect)
