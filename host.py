@@ -138,7 +138,8 @@ def has_winner(players: list[Player]):
 def game(round, state: State):
     reset_matrix()
 
-    broadcast(state.players, f"round:{round}$|$\n".encode())
+    max_round = get_max_round(len(state.players))
+    broadcast(state.players, f"round:{round} of {max_round}$|$\n".encode())
     for i in range(PLAY_WAIT_TIME, 0, -1):
         broadcast(state.players, f"countdown:{i}$|$\n".encode())
         time.sleep(1)
@@ -208,8 +209,6 @@ def game(round, state: State):
     pdata = pickle.dumps(list(map(lambda p: p[2], state.players)))
     broadcast(state.players, b"pdata:" + pdata + b"$|$\n")
 
-    broadcast(state.players, f"ranking$|$\n".encode())
-
 
 def play(state: State):
     current_round = 1
@@ -228,7 +227,12 @@ def play(state: State):
             new_player.points = player.points
             state.players[id] = (conn, file, new_player)
 
+        if current_round >= get_max_round(len(state.players)):
+            break
+
         current_round += 1
+
+    broadcast(state.players, f"ranking$|$\n".encode())
 
 
 def event_loop(state: State):

@@ -10,7 +10,7 @@ PTS_BOX = 5
 PTS_KILL = 15
 PTS_SUICIDE = -10
 PLAY_TIME = 60 * 3
-PLAY_WAIT_TIME = 1
+PLAY_WAIT_TIME = 5
 LIFE_PTS_CONVERTION = 50
 
 C_ACTIVE = "#00ff00"
@@ -85,3 +85,12 @@ class GameState:
     GAME_PHASE = "GAME_PHASE"
     WINNER_PHASE = "WINNER_PHASE"
     TUTORIAL = "TUTORIAL"
+
+
+def get_max_round(player_len):
+    if player_len > 8:
+        return 7
+    elif player_len > 4:
+        return 5
+
+    return 3

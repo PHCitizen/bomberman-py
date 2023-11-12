@@ -73,6 +73,8 @@ def socket_thread(state: State):
             state.countdown = countdown
         elif buffer == b"go$|$\n":
             state.state = GameState.GAME_PHASE
+        elif buffer == b"ranking$|$\n":
+            state.state = GameState.WINNER_PHASE
         else:
             print("Unknown message", buffer)
 
@@ -219,7 +221,7 @@ def ranking_phase(state: State, with_coutdown):
 
     run = True
     while run:
-        if state.state != GameState.RANKING_PHASE:
+        if state.state not in [GameState.RANKING_PHASE, GameState.WINNER_PHASE]:
             break
 
         mouse_position = pygame.mouse.get_pos()
@@ -233,13 +235,14 @@ def ranking_phase(state: State, with_coutdown):
                 if exit_btn.checkForInput(mouse_position):
                     run = False
 
-        countdown = text(
-            15, f"Round {state.round} will start in {state.countdown}", True, "#d7fcd4")
+        ranked_players = sorted(
+            state.players, key=lambda x: x.points, reverse=True)
+
+        msg = f"Round {state.round} will start in {state.countdown}" if with_coutdown else f"{ranked_players[0].name} wins!!!"
+        countdown = text(15, msg, True, "#d7fcd4")
         countdown_rect = countdown.get_rect(center=(window.get_width()//2, 10))
         window.blit(countdown, countdown_rect)
 
-        ranked_players = sorted(
-            state.players, key=lambda x: x.points, reverse=True)
         if len(ranked_players) > 0:
             curr_rank = text(15, f"-- Player Ranks --", True, "#d7fcd4")
             curr_rank_rect = curr_rank.get_rect(
