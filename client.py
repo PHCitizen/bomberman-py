@@ -81,24 +81,22 @@ def waiting_phase(state: State):
     clock = pygame.time.Clock()
 
     waiting_text = text(15, 'Waiting for host to start...', True, "#d7fcd4")
-    select_text = text(15, 'Choose your character', True, "#d7fcd4")
+    waiting_text_rect = waiting_text.get_rect(
+        center=(window.get_width()//2, 10))
+
     pname_text = text(15, 'Enter name:', True, "#d7fcd4")
-    player_name = InputBox(185, 45, 200, 25, 15,
+    player_name = InputBox(185, 45, 250, 25, 15,
                            f"Player {state.player_index}")
+
+    select_text = text(15, 'Choose your character', True, "#d7fcd4")
+    select_text_rect = select_text.get_rect(
+        center=(window.get_width()//2, player_name.rect.bottom + 30))
 
     def sumbit_name(name):
         pygame.display.set_caption(f"BomberPy - {name}")
         state.file.write(f"name:{name}\n".encode())
 
     selected_character = 1
-    character = PlayerSprite(selected_character).get()
-    character = pygame.transform.scale_by(character, 1.5)
-    character_rect = character.get_rect(top=100, left=50)
-    next_btn = Button(None, (character_rect.right + 10, character_rect.centery),
-                      ">", font(20), "#d7fcd4", "White")
-    back_btn = Button(None, (character_rect.left - 10, character_rect.centery),
-                      "<", font(20), "#d7fcd4", "White")
-
     while True:
         mouse_position = pygame.mouse.get_pos()
         window.blit(get_background(), (0, 0))
@@ -112,29 +110,40 @@ def waiting_phase(state: State):
                 pygame.quit()
                 exit()
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                if next_btn.checkForInput(mouse_position):
-                    if selected_character < CHARACTER_LENGTH:
-                        selected_character += 1
-                elif back_btn.checkForInput(mouse_position):
-                    if selected_character > 1:
-                        selected_character -= 1
-                state.file.write(f"character:{selected_character}\n".encode())
+                try:
+                    if next_btn.checkForInput(mouse_position):
+                        if selected_character < CHARACTER_LENGTH:
+                            selected_character += 1
+                    elif back_btn.checkForInput(mouse_position):
+                        if selected_character > 1:
+                            selected_character -= 1
+                    state.file.write(
+                        f"character:{selected_character}\n".encode())
+                except Exception as e:
+                    pass
 
+            if len(player_name.text) > 15 and event.type == pygame.KEYDOWN and event.key != pygame.K_BACKSPACE:
+                continue
             player_name.handle_event(event, sumbit_name)
 
+        window.blit(waiting_text, waiting_text_rect)
         window.blit(pname_text, (20, 50))
-        window.blit(waiting_text, (20, 10))
         player_name.draw(window)
-        window.blit(select_text, (20, 90))
+        window.blit(select_text, select_text_rect)
 
         character = PlayerSprite(selected_character).get()
-        character = pygame.transform.scale_by(character, 1.5)
-        character_rect = character.get_rect(top=100, left=50)
+        character = pygame.transform.scale(character, (40, 40))
+        character_rect = character.get_rect(
+            top=select_text_rect.bottom + 10, left=50)
         window.blit(character, character_rect)
 
         if selected_character < CHARACTER_LENGTH:
+            next_btn = Button(None, (character_rect.right + 10, character_rect.centery),
+                              ">", font(20), "#d7fcd4", "White")
             next_btn.update(window, mouse_position)
         if selected_character > 1:
+            back_btn = Button(None, (character_rect.left - 10, character_rect.centery),
+                              "<", font(20), "#d7fcd4", "White")
             back_btn.update(window, mouse_position)
 
         pygame.display.update()
@@ -146,8 +155,9 @@ def game_phase(state: State):
 
     clock = pygame.time.Clock()
     game_obj = Game(state.socket, state.file)
-    stats_window = pygame.Surface((GAME_WIDTH, CELL_SIZE))
-    window = pygame.display.set_mode((GAME_WIDTH, GAME_HEIGHT + CELL_SIZE))
+    stats_window = pygame.Surface((GAME_WIDTH, CELL_SIZE * 2))
+    window = pygame.display.set_mode(
+        (GAME_WIDTH, game_obj.surface.get_height() + stats_window.get_height()))
 
     while True:
         if state.state != GameState.GAME_PHASE:
@@ -167,19 +177,22 @@ def game_phase(state: State):
             stats_window.blit(bomb_frame(0), (i * CELL_SIZE, 0))
 
         for i in range(current_player.lives):
-            stats_window.blit(
-                heart_sprites(), (GAME_WIDTH - ((i + 1) * CELL_SIZE), 0))
+            stats_window.blit(heart_sprites(), (i * CELL_SIZE, CELL_SIZE))
+
+        countdown = text(20, f"{state.countdown}s", True, "#ff0000")
+        countdown_rect = countdown.get_rect(
+            top=0, right=stats_window.get_width())
+        stats_window.blit(countdown, countdown_rect)
+
+        pts_text = font(20).render(
+            f"{current_player.points}pts", True, color=C_INACTIVE)
+        pts_rect = pts_text.get_rect(
+            top=countdown_rect.height, right=stats_window.get_width())
+        stats_window.blit(pts_text, pts_rect)
 
         window.blit(stats_window, (0, 0))
         game_obj.update(state.players, state.matrix)
-        window.blit(game_obj.surface, (0, CELL_SIZE))
-
-        window.blit(text(20, state.countdown, True, "#ff0000"), (0, 0))
-
-        pts_text = font(30).render(
-            f"{current_player.points}", True, color=C_INACTIVE)
-        pts_rect = pts_text.get_rect(center=(GAME_WIDTH // 2, CELL_SIZE // 2))
-        window.blit(pts_text, pts_rect)
+        window.blit(game_obj.surface, (0, stats_window.get_height()))
 
         pygame.display.update()
         clock.tick(FPS)
@@ -211,7 +224,27 @@ def ranking_phase(state: State, with_coutdown):
                 if exit_btn.checkForInput(mouse_position):
                     run = False
 
-        window.blit(text(20, state.countdown, True, "#d7fcd4"), (0, 0))
+        countdown = text(
+            15, f"Round {state.round} will start in {state.countdown}", True, "#d7fcd4")
+        countdown_rect = countdown.get_rect(center=(window.get_width()//2, 10))
+        window.blit(countdown, countdown_rect)
+
+        ranked_players = sorted(
+            state.players, key=lambda x: x.points, reverse=True)
+        if len(ranked_players) > 0:
+            curr_rank = text(15, f"-- Player Ranks --", True, "#d7fcd4")
+            curr_rank_rect = curr_rank.get_rect(
+                center=(window.get_width()//2, countdown_rect.bottom + 50))
+            window.blit(curr_rank, curr_rank_rect)
+
+            offset = curr_rank_rect.bottom + 10
+            for ranked_player in ranked_players:
+                ranking = text(
+                    15, f"{ranked_player.name} - {ranked_player.points} pts", True, "#d7fcd4")
+                rect = ranking.get_rect(center=(window.get_width()//2, offset))
+                window.blit(ranking, rect)
+                offset += rect.height + 10
+
         # window.blit(winner, (0, 50))
         # exit_btn.update(window, mouse_position)
 

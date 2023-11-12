@@ -247,7 +247,7 @@ def event_loop(state: State):
     pygame.display.set_caption("BomberPy - Host")
     clock = pygame.time.Clock()
 
-    start_btn = Button(None, (250, 50),
+    start_btn = Button(None, (window.get_width()//2, 20),
                        " Start ", font(30), "#d7fcd4", "White")
 
     threading.Thread(target=play, args=(state,), daemon=True).start()
@@ -269,21 +269,20 @@ def event_loop(state: State):
             elif event.type == E_GHOST:
                 broadcast(state.players, b"ghost$|$\n")
 
-        for i, (player_socket, _, player) in enumerate(state.players):
+        offset = start_btn.rect.bottom + 20
+        for player_socket, _, player in state.players:
             is_connected = "Disconnected" if player_socket is None else "Connected"
-            is_alive = "Alive" if player.lives > 0 else "Dead"
-            window.blit(
-                text(
-                    15, f'{player.name} - {is_alive} - {is_connected}', True, "#d7fcd4"),
-                (0, 100 + (20 * i))
-            )
+            player_name = text(
+                15, f'{player.name} - {is_connected}', True, "#d7fcd4")
+            window.blit(player_name, (0, offset))
+            offset += player_name.get_height()
 
         if state.start:
             # game status
-            window.blit(
-                text(20, 'Game started', True, "#d7fcd4"),
-                (125, 30),
-            )
+            game_start = text(20, 'Game started', True, "#d7fcd4")
+            game_start_rect = game_start.get_rect(
+                center=(window.get_width()//2, 30))
+            window.blit(game_start, game_start_rect)
         else:
             start_btn.update(window, mouse_position)
 
