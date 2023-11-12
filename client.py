@@ -26,6 +26,9 @@ class State:
         self.round = 1
         self.countdown = 5
 
+        self.character = 1
+        self.name = lambda: f"Player {self.player_index}"
+
 
 def socket_thread(state: State):
     global matrix, players
@@ -85,18 +88,21 @@ def waiting_phase(state: State):
         center=(window.get_width()//2, 10))
 
     pname_text = text(15, 'Enter name:', True, "#d7fcd4")
-    player_name = InputBox(185, 45, 250, 25, 15,
-                           f"Player {state.player_index}")
+    player_name = InputBox(185, 45, 250, 25, 15, state.name())
 
     select_text = text(15, 'Choose your character', True, "#d7fcd4")
     select_text_rect = select_text.get_rect(
         center=(window.get_width()//2, player_name.rect.bottom + 30))
 
+    tutorial_text = text(10, "Press 'h' for help", True, "#d7fcd4")
+    tutorial_text_rect = tutorial_text.get_rect(
+        bottom=window.get_height() - 5, right=window.get_width())
+
     def sumbit_name(name):
+        state.name = lambda: name
         pygame.display.set_caption(f"BomberPy - {name}")
         state.file.write(f"name:{name}\n".encode())
 
-    selected_character = 1
     while True:
         mouse_position = pygame.mouse.get_pos()
         window.blit(get_background(), (0, 0))
@@ -112,15 +118,17 @@ def waiting_phase(state: State):
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 try:
                     if next_btn.checkForInput(mouse_position):
-                        if selected_character < CHARACTER_LENGTH:
-                            selected_character += 1
+                        if state.character < CHARACTER_LENGTH:
+                            state.character += 1
                     elif back_btn.checkForInput(mouse_position):
-                        if selected_character > 1:
-                            selected_character -= 1
-                    state.file.write(
-                        f"character:{selected_character}\n".encode())
+                        if state.character > 1:
+                            state.character -= 1
+                    state.file.write(f"character:{state.character}\n".encode())
                 except Exception as e:
                     pass
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_h:
+                state.prevstate = state.state
+                state.state = GameState.TUTORIAL
 
             if len(player_name.text) > 15 and event.type == pygame.KEYDOWN and event.key != pygame.K_BACKSPACE:
                 continue
@@ -131,17 +139,18 @@ def waiting_phase(state: State):
         player_name.draw(window)
         window.blit(select_text, select_text_rect)
 
-        character = PlayerSprite(selected_character).get()
+        character = PlayerSprite(state.character).get()
         character = pygame.transform.scale(character, (40, 40))
         character_rect = character.get_rect(
             top=select_text_rect.bottom + 10, left=50)
         window.blit(character, character_rect)
+        window.blit(tutorial_text, tutorial_text_rect)
 
-        if selected_character < CHARACTER_LENGTH:
+        if state.character < CHARACTER_LENGTH:
             next_btn = Button(None, (character_rect.right + 10, character_rect.centery),
                               ">", font(20), "#d7fcd4", "White")
             next_btn.update(window, mouse_position)
-        if selected_character > 1:
+        if state.character > 1:
             back_btn = Button(None, (character_rect.left - 10, character_rect.centery),
                               "<", font(20), "#d7fcd4", "White")
             back_btn.update(window, mouse_position)
@@ -252,6 +261,116 @@ def ranking_phase(state: State, with_coutdown):
         clock.tick(FPS)
 
 
+def tutorial(state):
+    window = pygame.display.set_mode((650, 600))
+    clock = pygame.time.Clock()
+
+    exit_text = text(10, "Press 'esc' to exit", True, "#d7fcd4")
+    exit_text_rect = exit_text.get_rect(
+        bottom=window.get_height() - 5, right=window.get_width())
+
+    run = True
+    while run:
+        window.blit(get_background(), (0, 0))
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                state.state = state.prevstate
+                run = False
+
+        texts = text(20, "Tutorial", True, "#d7fcd4")
+        rect = texts.get_rect(centerx=window.get_width()//2, top=10)
+        window.blit(texts, rect)
+
+        # ================
+        # Arrow
+        # ================
+        img = pygame.transform.scale(kbd_arrow(), (100, 60))
+        img_rect = img.get_rect(left=0, top=rect.bottom + 20)
+        window.blit(img, img_rect)
+        texts = text(15, "Move the player", True, "#d7fcd4")
+        rect = texts.get_rect(
+            left=img_rect.right + 10, centery=img_rect.centery)
+        window.blit(texts, rect)
+
+        # ================
+        # Space
+        # ================
+
+        img = pygame.transform.scale(kbd_space(), (100, 40))
+        img_rect = img.get_rect(left=0, top=img_rect.bottom)
+        window.blit(img, img_rect)
+        texts = text(15, "Place the bomb", True, "#d7fcd4")
+        rect = texts.get_rect(
+            left=img_rect.right + 10, centery=img_rect.centery)
+        window.blit(texts, rect)
+
+        # ================
+        # Power up
+        # ================
+        texts = text(15, "Power Ups:", True, "#d7fcd4")
+        rect = texts.get_rect(left=0, top=img_rect.bottom + 30)
+        window.blit(texts, rect)
+
+        msg = [(heart_sprites(), "Increase life"),
+               (bomb_add_sprite(), "Increase bomb capacity"),
+               (movement_speed_sprite(), "Increase movement speed"),
+               (expl_range_add_sprite(), "Increase explosion range")]
+        for sprite, message in msg:
+            img = pygame.transform.scale(sprite, (30, 30))
+            img_rect = img.get_rect(left=30, top=rect.bottom + 10)
+            window.blit(img, img_rect)
+            texts = text(15, message, True, "#d7fcd4")
+            rect = texts.get_rect(
+                left=img_rect.right + 10, centery=img_rect.centery)
+            window.blit(texts, rect)
+
+        # ================
+        # Curse
+        # ================
+        texts = text(15, "Curse:", True, "#d7fcd4")
+        rect = texts.get_rect(left=0, top=img_rect.bottom + 10)
+        window.blit(texts, rect)
+
+        # ================
+        # Skull
+        # ================
+        img = pygame.transform.scale(skull_sprite(), (30, 30))
+        img_rect = img.get_rect(left=30, top=rect.bottom + 10)
+        window.blit(img, img_rect)
+        texts = text(15, "Decrease life without dying",
+                     True, "#d7fcd4", )
+        rect = texts.get_rect(
+            left=img_rect.right + 10, centery=img_rect.centery)
+        window.blit(texts, rect)
+
+        # ================
+        # Note
+        # ================
+
+        texts = text(15,
+                     f"""
+Note:
+    * The game will run for 3 rounds
+    * Whoever has the highest score will 
+        be the winner
+    * Each round has a maximum of 3 minutes
+    * After each round, life will be 
+        converted to pts. 1 life = {LIFE_PTS_CONVERTION} pts
+                     """, True, "#d7fcd4")
+        rect = texts.get_rect(left=0, top=img_rect.bottom + 10)
+        window.blit(texts, rect)
+
+        # exit text
+        window.blit(exit_text, exit_text_rect)
+
+        pygame.display.update()
+        clock.tick(FPS)
+
+
 def main():
     pygame.init()
 
@@ -296,6 +415,8 @@ def main():
             game_phase(state)
         elif state.state == GameState.WINNER_PHASE:
             ranking_phase(state, False)
+        elif state.state == GameState.TUTORIAL:
+            tutorial(state)
 
 
 if __name__ == "__main__":

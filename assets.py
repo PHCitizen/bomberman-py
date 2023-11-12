@@ -77,13 +77,23 @@ def font(size):
     return pygame.font.Font("./graphics/font.ttf", size)
 
 
-def text(size, *args):
-    return font(size).render(*args)
+def text(size, *args, **kwargs):
+    return font(size).render(*args, **kwargs)
 
 
 @cache
 def get_background():
     return pygame.image.load("./graphics/Background.png").convert_alpha()
+
+
+@cache
+def kbd_arrow():
+    return pygame.image.load("./graphics/kbd arrow.png").convert_alpha()
+
+
+@cache
+def kbd_space():
+    return pygame.image.load("./graphics/kbd space.png").convert_alpha()
 
 
 @cache
