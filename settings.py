@@ -36,28 +36,50 @@ K_MOVE_SPEED = 33
 K_DEATH = 34
 POWER_UP = [K_LIVES, K_EXTRA_BOMB, K_MOVE_SPEED, K_INC_BOMB_RANGE, K_DEATH]
 
-MATRIX = np.array([
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 0, 0, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 4, 0, 0, 1],
-    [1, 0, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 0, 1],
-    [1, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 4, 1],
-    [1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1],
-    [1, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 1],
-    [1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1],
-    [1, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 4, 1],
-    [1, 0, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 5, 1, 0, 1],
-    [1, 0, 0, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 4, 0, 0, 1],
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-], dtype=np.uint8)
 
-MATRIX_BASE = MATRIX.copy()
+MATRIX = np.zeros((0, 0), dtype=np.uint8)
 
 
-def reset_matrix():
-    global MATRIX, MATRIX_BASE
+def rows_cols(length):
+    if length <= 4:
+        return 11, 17
+    else:
+        return 19, 25
 
-    for y in range(GAME_ROWS):
-        MATRIX[y] = MATRIX_BASE[y].copy()
+
+def player_tile(length):
+    rows, cols = rows_cols(length)
+    return [(1, 1), (cols-2, rows-2), (cols-2, 1), (1, rows-2),]
+
+
+def reset_matrix(length):
+    global MATRIX
+
+    rows, cols = rows_cols(length)
+
+    MATRIX.resize((rows, cols), refcheck=False)
+    MATRIX[:, :] = K_WALL
+    MATRIX[1:-1, 1:-1] = K_RANDOM
+    MATRIX[2:-2:2, 2:-2:2] = K_WALL  # checkered pattern inside
+
+    for x, y in player_tile(length):
+        MATRIX[y][x] = K_SPACE
+
+        if MATRIX[y-1][x] == 5:
+            MATRIX[y-1][x] = K_SPACE
+            MATRIX[y-2][x] = K_BOX
+
+        if MATRIX[y+1][x] == 5:
+            MATRIX[y+1][x] = K_SPACE
+            MATRIX[y+2][x] = K_BOX
+
+        if MATRIX[y][x-1] == 5:
+            MATRIX[y][x-1] = K_SPACE
+            MATRIX[y][x-2] = K_BOX
+
+        if MATRIX[y][x+1] == 5:
+            MATRIX[y][x+1] = K_SPACE
+            MATRIX[y][x+2] = K_BOX
 
     # randomize field
     for y, x in np.argwhere(MATRIX == K_RANDOM):
@@ -68,15 +90,15 @@ FPS = 30
 CHARACTER_LENGTH = 5
 CELL_SIZE = 20
 CELL_RECT = (CELL_SIZE, CELL_SIZE)
-GAME_ROWS, GAME_COLS = len(MATRIX), len(MATRIX[0])
-GAME_HEIGHT, GAME_WIDTH = GAME_ROWS * CELL_SIZE, GAME_COLS * CELL_SIZE
-MAX_PLAYER = 4
-DEFAULT_COORD = [
-    (1, 1),
-    (GAME_COLS - 2, GAME_ROWS - 2),
-    (GAME_COLS - 2, 1),
-    (1, GAME_ROWS - 2),
-]
+
+
+def get_rows_cols():
+    return MATRIX.shape
+
+
+def get_height_width(shape):
+    rows, cols = shape
+    return rows * CELL_SIZE, cols * CELL_SIZE
 
 
 class GameState:

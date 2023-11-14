@@ -53,11 +53,12 @@ def socket_thread(state: State):
             state.players = pickle.loads(data)
         elif buffer.startswith(b"matrix:"):
             data = buffer.removesuffix(b"$|$\n")
-            data = data.split(b":", 1)[1]
+            _, y, x, data = data.split(b":", 3)
+            shape = int(y.decode()), int(x.decode())
             try:
                 data = zlib.decompress(data)
                 state.matrix = np.frombuffer(
-                    data, dtype=np.uint8).reshape(MATRIX.shape)
+                    data, dtype=np.uint8).reshape(shape)
             except zlib.error as e:
                 print(buffer, e)
         elif buffer == b"explosion$|$\n":
@@ -165,10 +166,11 @@ def game_phase(state: State):
     bgmusic().play(-1)
 
     clock = pygame.time.Clock()
-    game_obj = Game(state.socket, state.file)
-    stats_window = pygame.Surface((GAME_WIDTH, CELL_SIZE * 2))
+    game_obj = Game(state.socket, state.file, state.matrix.shape)
+    height, width = get_height_width(state.matrix.shape)
+    stats_window = pygame.Surface((width, CELL_SIZE * 2))
     window = pygame.display.set_mode(
-        (GAME_WIDTH, game_obj.surface.get_height() + stats_window.get_height()))
+        (width, height + stats_window.get_height()))
 
     while True:
         if state.state != GameState.GAME_PHASE:

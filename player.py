@@ -33,7 +33,8 @@ def get_character(character):
 def can_move(x, y, ghost_mode):
     """prevent movement when bomb or wall encounter"""
     if ghost_mode:
-        return 0 < x < GAME_COLS - 1 and 0 < y < GAME_ROWS - 1
+        rows, cols = get_rows_cols()
+        return 0 < x < cols - 1 and 0 < y < rows - 1
 
     val = MATRIX[y][x]
     if val in [K_WALL, K_BOX] or val in K_BOMB:

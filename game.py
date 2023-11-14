@@ -4,10 +4,11 @@ from player import Player
 
 
 class Game:
-    def __init__(self, client_socket, file):
+    def __init__(self, client_socket, file, shape):
         self.socket = client_socket
         self.file = file
-        self.surface = pygame.Surface((GAME_WIDTH, GAME_HEIGHT))
+        height, width = get_height_width(shape)
+        self.surface = pygame.Surface((width, height))
         self.grasses = Grass()
 
     def update(self, players: list[Player], matrix):

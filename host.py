@@ -78,7 +78,7 @@ def host_thread(host, port, state: State):
     # listen to port using TCP socket
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind((host, port))
-    server_socket.listen(MAX_PLAYER)
+    server_socket.listen()
     print("server started")
 
     i = 0
@@ -88,9 +88,11 @@ def host_thread(host, port, state: State):
 
         # player connection obj
         player_socket, _ = server_socket.accept()
+        print(f"Player {i} connected")
         file = socket.SocketIO(player_socket, "rwb")
+        ptile = player_tile(len(state.players) + 1)[i]
         new_player = Player(state.task_manager, state.bomb_factory,
-                            DEFAULT_COORD[i], f"Player {i}", 1)
+                            ptile, f"Player {i}", 1)
 
         # send to player the player_id
         player_socket.sendall(i.to_bytes(16, "big") + b"\n")
@@ -105,7 +107,6 @@ def host_thread(host, port, state: State):
             args=(state.players, i),
             daemon=True).start()
 
-        print(f"Player {i} connected")
         i += 1
 
 
@@ -136,7 +137,7 @@ def has_winner(players: list[Player]):
 
 
 def game(round, state: State):
-    reset_matrix()
+    reset_matrix(len(state.players))
 
     max_round = get_max_round(len(state.players))
     broadcast(state.players, f"round:{round} of {max_round}$|$\n".encode())
@@ -195,7 +196,7 @@ def game(round, state: State):
 
         matrix_data = MATRIX.tobytes()
         if matrix_data != last_matrix:
-            broadcast(state.players, b"matrix:" +
+            broadcast(state.players, b"matrix:" + f"{MATRIX.shape[0]}:{MATRIX.shape[1]}:".encode() +
                       zlib.compress(matrix_data) + b"$|$\n")
             last_matrix = matrix_data
 
