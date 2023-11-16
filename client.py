@@ -11,6 +11,7 @@ from settings import *
 from game import Game
 from assets import *
 from button import *
+from task import Task
 
 
 class State:
@@ -22,12 +23,14 @@ class State:
         self.socket = None
         self.file: socket.SocketIO = None
 
-        self.state = GameState.WAITING_PHASE
+        self.state = GameState.HOME_SCREEN
         self.round = 1
         self.countdown = 5
 
         self.character = 1
         self.name = lambda: f"Player {self.player_index}"
+
+        self.task_manager = Task()
 
 
 def socket_thread(state: State):
@@ -192,7 +195,7 @@ def game_phase(state: State):
         for i in range(current_player.lives):
             stats_window.blit(heart_sprites(), (i * CELL_SIZE, CELL_SIZE))
 
-        countdown = text(20, f"{state.countdown}s", True, "#ff0000")
+        countdown = text(20, f"{state.countdown}s", True, C_INACTIVE)
         countdown_rect = countdown.get_rect(
             top=0, right=stats_window.get_width())
         stats_window.blit(countdown, countdown_rect)
@@ -380,43 +383,128 @@ Note:
         clock.tick(FPS)
 
 
+def home_screen(state: State):
+    window = pygame.display.set_mode((350, 200))
+
+    clock = pygame.time.Clock()
+
+    bomberman_text = text(30, 'Bomberman', True, "#d7fcd4")
+    waiting_text_rect = bomberman_text.get_rect(
+        center=(window.get_width()//2, 20))
+
+    host_text_pos = (10, waiting_text_rect.bottom + 30)
+    host_text = text(15, 'Host: ', True, "#d7fcd4")
+    host_input = InputBox(host_text.get_width(),
+                          host_text_pos[1] - 5, 250, 25, 15, "localhost")
+
+    port_text_pos = (10, host_text_pos[1] + 30)
+    port_text = text(15, 'Port: ', True, "#d7fcd4")
+    port_input = InputBox(port_text.get_width(),
+                          port_text_pos[1] - 5, 250, 25, 15, "8888")
+
+    connect_btn = Button(None, (window.get_width()//2, window.get_height() - 40),
+                         " Connect ", font(20), "#d7fcd4", "White")
+    connect_btn.border = True
+
+    data = {
+        "msg": None,
+        "host": "localhost",
+        "port": 8888
+    }
+
+    def connect():
+        data["msg"] = "Failed to server"
+        try:
+            client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            client_socket.connect((data["host"], data["port"]))
+            client_file = socket.SocketIO(client_socket, "rwb")
+
+            state.file = client_file
+            state.socket = client_socket
+        except Exception as e:
+            data["msg"] = "Failed to connect to server"
+
+            def reset_msg():
+                data["msg"] = None
+            state.task_manager.add(3000, reset_msg)
+            return
+
+        # the server will sent the player index once we connect
+        player_index = client_file.readline().rstrip()
+        player_index = int.from_bytes(player_index, "big")
+        state.player_index = player_index
+        pygame.display.set_caption(f"BomberPy - Player {player_index}")
+
+        threading.Thread(target=socket_thread, args=(
+            state,), daemon=True).start()
+        state.state = GameState.WAITING_PHASE
+
+    def set_host(x):
+        data["host"] = x
+
+    def set_port(x):
+        data["port"] = int(x)
+
+    need_connect = False
+
+    while True:
+        mouse_position = pygame.mouse.get_pos()
+        window.blit(get_background(), (0, 0))
+
+        if state.state != GameState.HOME_SCREEN:
+            break
+
+        # Main screen
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if connect_btn.checkForInput(mouse_position):
+                    # force update message
+                    # connecting to server is blocking the thread
+                    # thats why we need to put it in end, so we can output msg
+                    data["msg"] = "Connecting..."
+                    need_connect = True
+
+            host_input.handle_event(event, set_host)
+            port_input.handle_event(event, set_port)
+
+        window.blit(bomberman_text, waiting_text_rect)
+
+        window.blit(host_text, host_text_pos)
+        host_input.draw(window)
+
+        window.blit(port_text, port_text_pos)
+        port_input.draw(window)
+
+        connect_btn.update(window, mouse_position)
+
+        if data["msg"]:
+            message = text(10, data["msg"], True, "#d7fcd4")
+            message_rect = message.get_rect(bottomright=(
+                window.get_width(), window.get_height()))
+            window.blit(message, message_rect)
+
+        pygame.display.update()
+        state.task_manager.tick()
+        clock.tick(FPS)
+
+        if need_connect:
+            connect()
+            need_connect = False
+
+
 def main():
     pygame.init()
 
-    try:
-        host = sys.argv[1]
-    except IndexError:
-        host = "localhost"
-
-    try:
-        port = int(sys.argv[2])
-    except IndexError:
-        port = 8888
-
     state = State()
 
-    try:
-        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        client_socket.connect((host, port))
-        client_file = socket.SocketIO(client_socket, "rwb")
-
-        state.file = client_file
-        state.socket = client_socket
-    except Exception as e:
-        print(e)
-        print("Failed to connect to server")
-        os._exit(1)
-
-    # the server will sent the player index once we connect
-    player_index = client_file.readline().rstrip()
-    player_index = int.from_bytes(player_index, "big")
-    state.player_index = player_index
-    pygame.display.set_caption(f"BomberPy - Player {player_index}")
-
     # start the app
-    threading.Thread(target=socket_thread, args=(state,), daemon=True).start()
     while True:
-        if state.state == GameState.WAITING_PHASE:
+        if state.state == GameState.HOME_SCREEN:
+            home_screen(state)
+        elif state.state == GameState.WAITING_PHASE:
             waiting_phase(state)
         elif state.state == GameState.RANKING_PHASE:
             ranking_phase(state, True)

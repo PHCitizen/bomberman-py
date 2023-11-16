@@ -102,6 +102,7 @@ def get_height_width(shape):
 
 
 class GameState:
+    HOME_SCREEN = "HOME_SCREEN"
     WAITING_PHASE = "WAITING_PHASE"
     RANKING_PHASE = "RANKING_PHASE"
     GAME_PHASE = "GAME_PHASE"

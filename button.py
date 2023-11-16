@@ -9,6 +9,9 @@ class Button:
         self.x_pos = pos[0]
         self.y_pos = pos[1]
         self.font = font
+        self.padding = 5
+        self.border = False
+
         self.base_color, self.hovering_color = base_color, hovering_color
         self.text_input = text_input
         self.text = self.font.render(self.text_input, True, self.base_color)
@@ -21,6 +24,12 @@ class Button:
         self.changeColor(position)
         if self.image is not None:
             screen.blit(self.image, self.rect)
+
+        if self.border:
+            a, b, c, d = self.text_rect
+            pad, pad2 = self.padding, self.padding * 2
+            pos = (a-pad, b-pad, c+pad2, d+pad2)
+            pygame.draw.rect(screen, "#d7fcd4", pos, 2)
         screen.blit(self.text, self.text_rect)
 
     def checkForInput(self, position):
