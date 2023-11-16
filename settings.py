@@ -44,12 +44,16 @@ def rows_cols(length):
     if length <= 4:
         return 11, 17
     else:
-        return 19, 25
+        return 19, 19
 
 
 def player_tile(length):
     rows, cols = rows_cols(length)
-    return [(1, 1), (cols-2, rows-2), (cols-2, 1), (1, rows-2),]
+    default = [(1, 1), (cols-2, rows-2), (cols-2, 1), (1, rows-2)]
+
+    if length <= 4:
+        return default
+    return default + [(cols//2, 1), (cols//2, rows-2), (1, rows//2), (cols-2, rows//2)]
 
 
 def reset_matrix(length):
