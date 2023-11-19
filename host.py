@@ -24,6 +24,7 @@ class State:
 
         # ? if our host will run on server without display
         self.headless = False
+        self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 
 def message_handler(players, index: int):
@@ -79,6 +80,7 @@ def host_thread(host, port, state: State):
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind((host, port))
     server_socket.listen()
+    state.server_socket = server_socket
     print("server started")
 
     i = 0
@@ -242,11 +244,18 @@ def event_loop(state: State):
     """
 
     pygame.init()
-    window = pygame.display.set_mode((500, 200))
+    window = pygame.display.set_mode((550, 300))
     pygame.display.set_caption("BomberPy - Host")
     clock = pygame.time.Clock()
 
-    start_btn = Button(None, (window.get_width()//2, 20),
+    port = state.server_socket.getsockname()[1]
+    host_addr = socket.gethostbyname(socket.gethostname())
+    host_addr_text = player_name = text(
+        15, f'Host Address: {host_addr}:{port}', True, "#d7fcd4")
+    host_addr_rect = host_addr_text.get_rect(
+        centerx=window.get_width()//2, top=10)
+
+    start_btn = Button(None, (window.get_width()//2, host_addr_rect.bottom + 30),
                        " Start ", font(30), "#d7fcd4", "White")
 
     threading.Thread(target=play, args=(state,), daemon=True).start()
@@ -276,11 +285,13 @@ def event_loop(state: State):
             window.blit(player_name, (0, offset))
             offset += player_name.get_height()
 
+        window.blit(host_addr_text, host_addr_rect)
+
         if state.start:
             # game status
             game_start = text(20, 'Game started', True, "#d7fcd4")
             game_start_rect = game_start.get_rect(
-                center=(window.get_width()//2, 30))
+                centerx=window.get_width()//2, top=host_addr_rect.bottom + 20)
             window.blit(game_start, game_start_rect)
         else:
             start_btn.update(window, mouse_position)
