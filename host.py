@@ -141,6 +141,11 @@ def has_winner(players: list[Player]):
 def game(round, state: State):
     reset_matrix(len(state.players))
 
+    last_matrix = MATRIX.tobytes()
+    last_pdata = b""
+    broadcast(state.players, b"matrix:" + f"{MATRIX.shape[0]}:{MATRIX.shape[1]}:".encode() +
+              zlib.compress(last_matrix) + b"$|$\n")
+
     max_round = get_max_round(len(state.players))
     broadcast(state.players, f"round:{round} of {max_round}$|$\n".encode())
     for i in range(PLAY_WAIT_TIME, 0, -1):
@@ -152,9 +157,6 @@ def game(round, state: State):
     broadcast(state.players, f"countdown:{countdown}$|$\n".encode())
     broadcast(state.players, "go$|$\n".encode())
     clock = pygame.time.Clock()
-
-    last_matrix = b""
-    last_pdata = b""
 
     while True:
         winner = has_winner(list(map(lambda p: p[2], state.players)))
