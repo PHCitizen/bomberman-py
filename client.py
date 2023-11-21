@@ -104,6 +104,12 @@ def waiting_phase(state: State):
     tutorial_text_rect = tutorial_text.get_rect(
         bottom=window.get_height() - 5, right=window.get_width())
 
+    characters = [
+        Button(pygame.transform.scale(PlayerSprite(i).get(), (40, 40)), ((50 * i) + 120, select_text_rect.bottom + 30),
+               "", font(20), "#d7fcd4", "White")
+        for i in range(1, 5)
+    ]
+
     def sumbit_name(name):
         state.name = lambda: name
         pygame.display.set_caption(f"BomberPy - {name}")
@@ -122,16 +128,13 @@ def waiting_phase(state: State):
                 pygame.quit()
                 exit()
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                try:
-                    if next_btn.checkForInput(mouse_position):
-                        if state.character < CHARACTER_LENGTH:
-                            state.character += 1
-                    elif back_btn.checkForInput(mouse_position):
-                        if state.character > 1:
-                            state.character -= 1
-                    state.file.write(f"character:{state.character}\n".encode())
-                except Exception as e:
-                    pass
+                for id, character in enumerate(characters):
+                    try:
+                        if character.checkForInput(mouse_position):
+                            state.file.write(f"character:{id + 1}\n".encode())
+                            state.character = id + 1
+                    except Exception as e:
+                        continue
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_h and not player_name.active:
                 state.prevstate = state.state
                 state.state = GameState.TUTORIAL
@@ -145,21 +148,13 @@ def waiting_phase(state: State):
         player_name.draw(window)
         window.blit(select_text, select_text_rect)
 
-        character = PlayerSprite(state.character).get()
-        character = pygame.transform.scale(character, (40, 40))
-        character_rect = character.get_rect(
-            top=select_text_rect.bottom + 10, left=50)
-        window.blit(character, character_rect)
-        window.blit(tutorial_text, tutorial_text_rect)
+        for id, character in enumerate(characters):
+            character.update(window, mouse_position)
 
-        if state.character < CHARACTER_LENGTH:
-            next_btn = Button(None, (character_rect.right + 10, character_rect.centery),
-                              ">", font(20), "#d7fcd4", "White")
-            next_btn.update(window, mouse_position)
-        if state.character > 1:
-            back_btn = Button(None, (character_rect.left - 10, character_rect.centery),
-                              "<", font(20), "#d7fcd4", "White")
-            back_btn.update(window, mouse_position)
+        pygame.draw.rect(window, "#00ff00",
+                         ((state.character * 50) + 100, select_text_rect.bottom + 10, 40, 40), 2)
+
+        window.blit(tutorial_text, tutorial_text_rect)
 
         pygame.display.update()
         clock.tick(FPS)
