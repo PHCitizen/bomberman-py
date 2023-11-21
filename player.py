@@ -27,7 +27,7 @@ def get_sprites():
 @cache
 def get_character(character):
     print(f"[ DEBUG ] Loaded character {character}")
-    return pygame.image.load(f"./graphics/characters/{character}.png")
+    return pygame.image.load(f"./graphics/characters/c{character}.png")
 
 
 def can_move(x, y, ghost_mode):
@@ -89,7 +89,24 @@ class PlayerSprite:
         self.last_update = current_time
 
     def get(self):
-        image = get_image(self.sprite, self.frame, 32, 32)
+        swidth, sheight = self.sprite.get_width(), self.sprite.get_height()
+        width, height = swidth//4, sheight//4
+        # surface = get_image(self.sprite, self.frame, width, height)
+
+        # aspect_ratio = width / height
+        # nwidth, nheight = CELL_RECT
+        # if width >= height:
+        #     nheight = nwidth / aspect_ratio
+        # else:
+        #     nwidth = nheight * aspect_ratio
+
+        # scaled_img = pygame.transform.scale(surface, (nwidth, nheight))
+        # rect = scaled_img.get_rect(centerx=CELL_SIZE//2, bottom=CELL_SIZE)
+        # surface = pygame.Surface(
+        #     CELL_RECT, pygame.SRCALPHA, 32).convert_alpha()
+        # surface.blit(scaled_img, rect)
+
+        image = get_image(self.sprite, self.frame, width, height)
         return pygame.transform.scale(image, CELL_RECT)
 
 

@@ -91,8 +91,8 @@ def reset_matrix(length):
 
 
 FPS = 30
-CHARACTER_LENGTH = 5
-CELL_SIZE = 20
+CHARACTER_LENGTH = 4
+CELL_SIZE = 30
 CELL_RECT = (CELL_SIZE, CELL_SIZE)
 
 
